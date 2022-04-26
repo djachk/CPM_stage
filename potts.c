@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	int heat_bath = 0, nb_temperature;
 	//int *targetarea, *cellarea, *perimeter, *celltype, *oldperimeter, *targetperimeter; long largenumberofsides,smallnumberofsides;
 	int **Jarray; //a 2D array for the interaction energies between cells
-	double area_constraint = 3000.;
+	double area_constraint = 3000., area_constraint1=3000., area_constraint2=3000.;
 	double temperature_min=10., temperature_max=50.;
 	double tmp_energie=0.;
 	int mediumcell = 0; //the highest cellnumber without area conservation
@@ -97,6 +97,8 @@ int main(int argc, char *argv[])
 	//InDat("%d","neighbour_copy",&neighbour_copy);
 	//InDat("%d","neighbour_connected",&neighbour_connected);
 	InDat("%lf","area_constraint",&area_constraint);
+	InDat("%lf","area_constraint1",&area_constraint1);
+	InDat("%lf","area_constraint2",&area_constraint2);
 	InDat("%d", "temperinginterval",&temperinginterval);
 	InDat("%d","nb_temperature",&nb_temperature);
 	InDat("%d","annealing",&annealing);
@@ -115,6 +117,9 @@ int main(int argc, char *argv[])
 	TYPE **state[nb_temperature], **nstate, **copystate, **copynstate; //a 2D array. TYPE = int. For speeding up calculations, TYPE can be set in cash.h
 	Cell cells[nb_temperature], copycells;
 	int* line_interface; //interface entre les deux tissus cellulaires
+	int division_cellulaire=0;
+	int interphase1=100, interphase2=100;
+	int nb_cellules1=0, nb_cellules2=0;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
@@ -127,6 +132,9 @@ int main(int argc, char *argv[])
 	InDat("%d","totaltime",&totaltime);
 	InDat("%d","interface_start_time",&interface_start_time); 
 	InDat("%d","interface_time_step",&interface_time_step);
+	InDat("%d","division_cellulaire",&division_cellulaire);
+	InDat("%d","interphase1",&interphase1);
+	InDat("%d","interphase2",&interphase2);
 	
 	InDat("%d","heat_bath",&heat_bath);
 		
@@ -189,7 +197,7 @@ int main(int argc, char *argv[])
 	FILE *swapfp, *moviefp, *savefp, *loadfp, *acceptancefp;
 	FILE* interfacefp; // ecriture des lignes d'interface
 	char nom_fich_interface[100];
-	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT%d.txt",(int)temperature_max); //un fichier pour chaque temperature
+	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=2000_B1=20000_B2=20000.txt",(int)temperature_max); //un fichier pour chaque temperature
 	interfacefp=fopen(nom_fich_interface,"w");
 	snprintf(output,200,"%s",argv[2]); //argv[2] est le 2eme argument passé au programme. Il s'agit donc du nom du dossier de la simul
 	snprintf(savefile,200,"%s/%s.save",argv[2],argv[2]);
@@ -358,7 +366,7 @@ int main(int argc, char *argv[])
 	}
 
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
-	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding);
+	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1);
 
 	for (int i = 1;i<nb_temperature;i++) {
 		Duplicate(cells[i], cells[0], maxcells);
@@ -451,7 +459,7 @@ int main(int argc, char *argv[])
 		if (movie  && neighbour_connected != 6 && Mouse())
 			break;
 		if(ttime==dispersetime){
-			deleted=GeneratePolydispersity(polydispersity,blob,maxcells,fillfactor,nrow,ncol,target_area,targetareamu2,target_area2,alpha,cells[0]);
+			deleted=GeneratePolydispersity(polydispersity,blob,maxcells,fillfactor,nrow,ncol,target_area,targetareamu2,target_area2,alpha,cells[0], area_constraint2);
 			//InDat("%lf","area_constraint",&area_constraint);
 			energie[0]=ComputeEnergy(maxcells, cells[0], ncol, nrow, state[0], neighbour_energy, Jarray, area_constraint); //on réinitialise l'énergie des systèmes
 			ComputePerimeter(maxcells, cells[0], ncol, nrow, state[0], mediumcell, neighbour_energy); //calcul des périmètres des bulles
@@ -512,6 +520,7 @@ int main(int argc, char *argv[])
 			Copy(copystate,state[0]); //sauvegarde de la configuration avant recuît
 			Copy(copynstate,nstate);
 		}
+
 		if((ttime>=dispersetime)&&(!(ttime%writinginterval))){
 			//printf("%d\n",ttime);
 			for (int ind=0;ind<nb_temperature;ind++) {
@@ -751,7 +760,7 @@ int main(int argc, char *argv[])
 			BubbleHamiltonian(ttime, dispersetime, 0, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[0], mediumcell, heat_bath, Jarray, cells[0], area_constraint , temperature[0]);
 		}
 		if (!(ttime%100)) {
-			printf("temps %ld\n", ttime);
+			printf("temps %d\n", ttime);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
 			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface

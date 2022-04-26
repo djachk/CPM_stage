@@ -13,6 +13,7 @@ typedef struct cell {
 	double *temp;
 	int *targetarea;
 	int *area;
+	double *area_constraint;
 	int *celltype;
 	int *perimeter;
 	int *surf_energy; //cells.sur_energy=J*cells.perimeter pour une mousse, mais pas pour un tissu.
@@ -28,8 +29,8 @@ void FreeCells(Cell cells, int n);
 void Duplicate(Cell copie, Cell original, int maxcells);
 
 int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, int side2);
-void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding);
+void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1);
 int AssignNormalTargetarea(int mean, double mu2adim, int minimum);
-int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells);
+int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2);
 
 #endif

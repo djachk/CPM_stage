@@ -123,10 +123,10 @@ double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_ener
 					}
 					delta_surf_E=(int)(delta_E); //on stocke la variation d'énergie de surface		
 					if(cells.targetarea[pixel] > 0){
-						delta_E+=area_constraint/cells.targetarea[pixel]*(-2*(cells.area[pixel]-cells.targetarea[pixel])+1);
+						delta_E+=cells.area_constraint[pixel]/cells.targetarea[pixel]*(-2*(cells.area[pixel]-cells.targetarea[pixel])+1);
 					}
 					if(cells.targetarea[icandidate] > 0){
-						delta_E+=area_constraint/cells.targetarea[icandidate]*(2*(cells.area[icandidate]-cells.targetarea[icandidate])+1);
+						delta_E+=cells.area_constraint[icandidate]/cells.targetarea[icandidate]*(2*(cells.area[icandidate]-cells.targetarea[icandidate])+1);
 					}
 					sub_flag = false; // flag qui devient true si le changement de valeur du pixel est autorisé par le metropolis step.	
 					if ( delta_E < 0. || aleatoire(num) < exp(-delta_E/temperature) ){
@@ -337,7 +337,7 @@ double ComputeEnergy(int maxcells, Cell cells, int ncol, int nrow, TYPE **state,
 	
 	for(k=1;k<maxcells;k++) {//on ajoute l'énergie de compression
 		if(cells.targetarea[k]!=0) {
-			total_energy+=area_constraint*pow(cells.targetarea[k]-cells.area[k],2)/cells.targetarea[k];
+			total_energy+=cells.area_constraint[k]*pow(cells.targetarea[k]-cells.area[k],2)/cells.targetarea[k];
 		}
 	}
 	
