@@ -53,6 +53,14 @@ Cell AllocateCells(int n, int maxneighbour) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
 	}
+	if((cells.t_debut_division=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}	
+	if((cells.interphase=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}		
 	for(i=0;i<n;i++){
 		if((cells.neighbours[i]=(int *)calloc((size_t)maxneighbour,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
@@ -149,17 +157,21 @@ int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, i
 	
 }
 
-void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1) {
+void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1, 
+	int interphase1, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire) {
 	//rq: étrange, si fillfactor est déclaré en double, plutôt que float, alors target_area/fillfactor donne des résulats étrange: par exemple, si target_area=110 et fillfactor=1.1, le rapport des deux obtenus est 99 !!
 	int i,j,k;
 	int cellarea=9; //taille par défaut de la graine de chaque bulle
 	int arete;
 	
 	
-	int number=(int)(fillfactor*nrow*ncol/target_area);
+	//int number=(int)(fillfactor*nrow*ncol/target_area);
+	int number=maxcells;
+	if (division_cellulaire)  number = number/4;   //générer moins de cellules pour division cellulaire
 		
 	k=1;
-	while(k<1+number){
+	while(k<number){
+	//while(k<1+number){
 
 		switch (init_config)
 		{
@@ -273,6 +285,10 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 			cells.area_constraint[k]=area_constraint1;
 			cells.celltype[k]=1;
 			cells.targetarea[k]=target_area;
+			cells.t_debut_division[k]= (int) (aleatoire(0)*interphase1);
+			cells.interphase[k]=interphase1;
+			(*nb_cellules)++;
+			(*nb_cellules1)++;
 			k++;
 		}
 		
@@ -286,7 +302,8 @@ int AssignNormalTargetarea(int mean, double mu2adim, int minimum) {
        return area;
 }
 
-int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2) { 
+int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
+	int interphase2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2) { 
 	int ksigma, meantargetarea, totaltargetarea=0, delet=0;
 	double randnum;
 	meantargetarea=target_area;
@@ -322,6 +339,9 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 						cells.targetarea[ksigma]=target_area2;
 						cells.celltype[ksigma]=2;
 						cells.area_constraint[ksigma]=area_constraint2;
+						cells.interphase[ksigma]=interphase2;
+						(*nb_cellules1)--;
+						(*nb_cellules2)++;
 					}
 					//cells.targetarea[ksigma]=(D_PeriodicWrap(cells.xcoord[ksigma],ncol)<(1-alpha)*ncol-sqrt(meantargetarea/3.14))?target_area:target_area2;
 					break;

@@ -20,6 +20,8 @@ typedef struct cell {
 	//int *oldperimeter; Unused
 	int *nneighbours;
 	int **neighbours;
+	int *t_debut_division;
+	int *interphase;
 } Cell;
 
 int* AllocateLineInterface(int n);
@@ -29,8 +31,10 @@ void FreeCells(Cell cells, int n);
 void Duplicate(Cell copie, Cell original, int maxcells);
 
 int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, int side2);
-void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1);
+void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1, 
+	int interphase1, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells,  int division_cellulaire);
 int AssignNormalTargetarea(int mean, double mu2adim, int minimum);
-int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2);
+int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
+	int interphase2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2);
 
 #endif

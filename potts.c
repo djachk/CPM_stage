@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	int* line_interface; //interface entre les deux tissus cellulaires
 	int division_cellulaire=0;
 	int interphase1=100, interphase2=100;
-	int nb_cellules1=0, nb_cellules2=0;
+	int nb_cellules=0, nb_cellules1=0, nb_cellules2=0;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
@@ -366,7 +366,10 @@ int main(int argc, char *argv[])
 	}
 
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
-	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1);
+	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
+		interphase1, &nb_cellules, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire);
+	printf("j'ai fait InitBubble\n");
+	printf("nb_cellules = %d\n", nb_cellules);
 
 	for (int i = 1;i<nb_temperature;i++) {
 		Duplicate(cells[i], cells[0], maxcells);
@@ -459,7 +462,12 @@ int main(int argc, char *argv[])
 		if (movie  && neighbour_connected != 6 && Mouse())
 			break;
 		if(ttime==dispersetime){
-			deleted=GeneratePolydispersity(polydispersity,blob,maxcells,fillfactor,nrow,ncol,target_area,targetareamu2,target_area2,alpha,cells[0], area_constraint2);
+			deleted=GeneratePolydispersity(polydispersity,blob,maxcells,fillfactor,nrow,ncol,target_area,targetareamu2,target_area2,alpha,cells[0], area_constraint2, 
+				interphase2, &nb_cellules, &nb_cellules1, &nb_cellules2);
+			printf("j'ai fait GeneratePolydispersity\n");	
+			printf("nb_cellules = %d\n", nb_cellules);
+			printf("nb_cellules1 = %d\n", nb_cellules1);
+			printf("nb_cellules2 = %d\n", nb_cellules2);
 			//InDat("%lf","area_constraint",&area_constraint);
 			energie[0]=ComputeEnergy(maxcells, cells[0], ncol, nrow, state[0], neighbour_energy, Jarray, area_constraint); //on réinitialise l'énergie des systèmes
 			ComputePerimeter(maxcells, cells[0], ncol, nrow, state[0], mediumcell, neighbour_energy); //calcul des périmètres des bulles
@@ -536,12 +544,12 @@ int main(int argc, char *argv[])
 				side_interface12=0;
 				side_interface10=0;
 				side_interface20=0;
-				FindNeighbours(maxcells, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface12, &side_interface10, &side_interface20);
+				FindNeighbours(nb_cellules, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface12, &side_interface10, &side_interface20);
 				fprintf(neighbourfp[ind],"# time: %d\n",ttime);
 				fprintf(voisinsfp[ind],"# time: %d\n",ttime);
 				fprintf(coordfp[ind],"%d",ttime);
 				nbrsides=0; nbrbulles=0; nbrsmall=0; smallnumberofsides=0; smallcurvature=0; nbrlarge=0; largenumberofsides=0; largecurvature=0;
-				//ComputeCenterCoords(cells[ind], ncol, nrow, state[ind], maxcells, mediumcell);
+				//ComputeCenterCoords(cells[ind], ncol, nrow, state[ind], nb_cellules, mediumcell);
 				for(k=mediumcell+1;k<maxcells;k++){
 					if(cells[ind].area[k]){
 						fprintf(voisinsfp[ind],"%d", k);
@@ -761,17 +769,28 @@ int main(int argc, char *argv[])
 		}
 		if (!(ttime%100)) {
 			printf("temps %d\n", ttime);
+			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, maxcells: %d\n", nb_cellules,nb_cellules1, nb_cellules2, maxcells);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
 			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
 			printf("j'ai ecrit line_interface\n");
 		}
+		if(ttime>dispersetime && division_cellulaire){
+			//printf("je vais tenter la division\n");
+			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules, mediumcell);
+			int nb_cellules_courant=nb_cellules;
+			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
+				int tdebut = cells[0].t_debut_division[num_cell];
+				int dinterphase = cells[0].interphase[num_cell];
+				if (!((ttime-tdebut)%dinterphase)) {
+					// printf("temps de diviser la cellule %d\n",num_cell);
+					// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
+					Diviser(cells[0], num_cell, nrow, ncol, state[0], &nb_cellules, &nb_cellules1, &nb_cellules2, maxcells);
+				}
+			}
+		}
 	}
 	printf("fin du programme\n");
-	// ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
-	// for (int j=0; j<ncol;j++){
-	// 	printf("valeur pour j=%d, %d\n",j, line_interface[j]);
-	// }
 	fclose(interfacefp); 
 
 	//On vérifie qu'il n'y a pas de fuite d'énergie:

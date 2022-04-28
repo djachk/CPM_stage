@@ -465,6 +465,88 @@ void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYP
 		}		
 }
 
+
+void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells) {
+	if ((*nb_cellules)==(maxcells-1)) return;
+	int x0 = (int)cells.xcoord[num_cell];
+	if (x0==0) x0=1;
+	int y0 = (int)cells.ycoord[num_cell];
+	if (y0==0) y0=1;
+	int x=y0,y=x0;  //attention à l'inversion
+	// printf("valeur de state[y0][x0]= "); 
+	// printf("%d\n", state[y0][x0]);
+	if (state[y0][x0] != num_cell) {
+		printf("attention, centre cellule %d mal positionné, je ne divise pas cette cellule\n", num_cell);
+		return;
+	}
+
+	int num_new_cell=(*nb_cellules) + 1;
+	
+	(*nb_cellules)++;
+	if (cells.celltype[num_cell] == 1) {
+		(*nb_cellules1)++;
+	}
+	else if (cells.celltype[num_cell] == 2) {
+		(*nb_cellules2)++;
+	}
+
+	cells.targetarea[num_new_cell] = cells.targetarea[num_cell];
+	cells.area[num_new_cell] = 0;
+	cells.area_constraint[num_new_cell] = cells.area_constraint[num_cell];
+	cells.celltype[num_new_cell] = cells.celltype[num_cell];
+	cells.t_debut_division[num_new_cell] = cells.t_debut_division[num_cell];
+	cells.interphase[num_new_cell] = cells.interphase[num_cell];
+
+	//printf("je parcours les environs de la cellule\n");
+	// y++; if (y==(ncol+1)) y=1;
+	// while(state[x][y]== num_cell) {
+	// 	//printf("premiere boucle while, x=%d, y=%d\n",x,y);
+	// 	while(state[x][y]== num_cell) {
+	// 		state[x][y] = num_new_cell;
+	// 		cells.area[num_cell]--;
+	// 		cells.area[num_new_cell]++;
+	// 		x++; if (x==(nrow+1)) x=1;
+	// 	}
+	// 	x=y0-1; if (x==0) x=nrow;
+	// 	//printf("deuxieme boucle while, x=%d, y=%d\n",x,y);		
+	// 	while(state[x][y]== num_cell) {
+	// 		state[x][y] = num_new_cell;
+	// 		cells.area[num_cell]--;
+	// 		cells.area[num_new_cell]++;			
+	// 		x--; if (x==0) x=nrow;
+	// 	}
+	// 	x=y0;
+	// 	y++; if (y==(ncol+1)) y=1;
+	// }
+
+	//autre forme de division
+	int R = (int) sqrt(cells.area[num_cell]);
+	//printf("R=%d\n",R);
+	if(R==0) printf("ATTENTION R=0\n");
+	int D =4*R;
+	for(int i=0; i<=D; i++){
+		int ip=x+i; if (ip>=(nrow+1)) ip=ip-nrow;
+		for(int j=0; j<=D; j++){
+			int jp=y+j; if (jp>=(ncol+1)) jp=jp-ncol;
+			if (state[ip][jp]==num_cell) {
+				state[ip][jp]=num_new_cell;
+				cells.area[num_cell]--;
+				cells.area[num_new_cell]++;
+			}
+		}
+		for(int j=0; j<=D; j++){
+			int jp=y-j; if (jp<=0) jp=ncol+jp;
+			if (state[ip][jp]==num_cell) {
+				state[ip][jp]=num_new_cell;
+				cells.area[num_cell]--;
+				cells.area[num_new_cell]++;				
+			}
+		}
+	}
+	//printf("j'ai fait une division, cellule= %d, new_cellule= %d, nb_cellules=%d\n", num_cell, num_new_cell, *nb_cellules);
+}
+
+
 void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, int mediumcell, int neighbour_connected, int maxneighbours, int* side_interf12, int* side_interf10, int* side_interf20) {
 	
 	//En toute rigueur neighbour_connected devrait correpondre au voisinage d'adjacence, z=4. Mais du fait de la discrétisation, deux noeuds trivalents sont parfois fusionnés
