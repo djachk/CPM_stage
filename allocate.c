@@ -60,7 +60,11 @@ Cell AllocateCells(int n, int maxneighbour) {
 	if((cells.interphase=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
-	}		
+	}	
+	if((cells.vient_de_diviser=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}			
 	for(i=0;i<n;i++){
 		if((cells.neighbours[i]=(int *)calloc((size_t)maxneighbour,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
@@ -158,7 +162,7 @@ int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, i
 }
 
 void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1, 
-	int interphase1, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire) {
+	int interphase1, int* nb_cellules, int* nb_cellules_vivantes,int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire) {
 	//rq: étrange, si fillfactor est déclaré en double, plutôt que float, alors target_area/fillfactor donne des résulats étrange: par exemple, si target_area=110 et fillfactor=1.1, le rapport des deux obtenus est 99 !!
 	int i,j,k;
 	int cellarea=9; //taille par défaut de la graine de chaque bulle
@@ -287,7 +291,9 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 			cells.targetarea[k]=target_area;
 			cells.t_debut_division[k]= (int) (aleatoire(0)*interphase1);
 			cells.interphase[k]=interphase1;
+			cells.vient_de_diviser[k]=0;
 			(*nb_cellules)++;
+			(*nb_cellules_vivantes)++;
 			(*nb_cellules1)++;
 			k++;
 		}

@@ -22,7 +22,7 @@ Try electric fence as well: "-lefence"
 
 
 
-#define MAXNEIGHBOURS 20
+#define MAXNEIGHBOURS 100   //20
 #define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -60,7 +60,9 @@ int main(int argc, char *argv[])
 	int blob=2; //si blob=1, frontière verticale entre petites et grosses bulles, si blob=2, blob central carré, si blob=3, blob central circulaire, et sinon les petites et grosses bulles sont distribuées aléatoirement
 	//bool wait = false;
 	int sliding=0;
-	long unsigned int seed=123456789;
+	srand(time(0));
+	long unsigned int seed=rand();   //123456789;
+	printf("seed=%lu\n",seed);
 	
 	
 	if (argc!=3) {
@@ -119,12 +121,13 @@ int main(int argc, char *argv[])
 	int* line_interface; //interface entre les deux tissus cellulaires
 	int division_cellulaire=0;
 	int interphase1=100, interphase2=100;
-	int nb_cellules=0, nb_cellules1=0, nb_cellules2=0;
+	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
 	InDat("%lf","temperature_min",&temperature_min);
 	InDat("%lf","temperature_max",&temperature_max);
+	printf("temperature_max = %lf\n", temperature_max);
 	InDat("%d","polydispersity",&polydispersity);
 	InDat("%d","blob",&blob);
 	InDat("%lf","line_to_area",&line_to_area);
@@ -197,7 +200,7 @@ int main(int argc, char *argv[])
 	FILE *swapfp, *moviefp, *savefp, *loadfp, *acceptancefp;
 	FILE* interfacefp; // ecriture des lignes d'interface
 	char nom_fich_interface[100];
-	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=2000_B1=20000_B2=20000.txt",(int)temperature_max); //un fichier pour chaque temperature
+	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=2000_B1=20000_B2=20000-div.txt",(int)temperature_max); //un fichier pour chaque temperature
 	interfacefp=fopen(nom_fich_interface,"w");
 	snprintf(output,200,"%s",argv[2]); //argv[2] est le 2eme argument passé au programme. Il s'agit donc du nom du dossier de la simul
 	snprintf(savefile,200,"%s/%s.save",argv[2],argv[2]);
@@ -367,7 +370,7 @@ int main(int argc, char *argv[])
 
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
 	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
-		interphase1, &nb_cellules, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire);
+		interphase1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire);
 	printf("j'ai fait InitBubble\n");
 	printf("nb_cellules = %d\n", nb_cellules);
 

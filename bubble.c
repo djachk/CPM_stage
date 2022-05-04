@@ -441,33 +441,34 @@ int ComputeBoundary(Cell cells, int ncol, int nrow, TYPE **state, int neighbour_
 void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface) {
 	//calcule et ecrit dans un fichier l'interface entre les deux tissus cellulaires
 	int k, k_bas;
-		for(int j=1;j<=ncol;j++){
-			for(int i=1;i<=nrow;i++){
-				if (i>nrow/3 && i<(2*nrow)/3) {
-					k = cells.celltype[state[i][j]];
-					k_bas = cells.celltype[state[i+1][j]];
-					if (k==1 && k_bas==2 ){
-						if (line_interface[j-1] != 0) printf("Attention interface double\n");
-						line_interface[j-1]=nrow-i;  //lecture y=f(x)
-						break;
-					}
+	for(int j=1;j<=ncol;j++){
+		for(int i=1;i<=nrow;i++){
+			if (i>nrow/4 && i<(3*nrow)/4) {
+				k = cells.celltype[state[i][j]];
+				k_bas = cells.celltype[state[i+1][j]];
+				if (k==1 && k_bas==2 ){
+					if (line_interface[j-1] != 0) printf("Attention interface double\n");
+					line_interface[j-1]=nrow-i;  //lecture y=f(x)
+					break;
 				}
 			}
 		}
-		//ecriture dans fichier output
-		for (int j=0; j<ncol; j++){
-			fprintf(interfacefp, "%d ", line_interface[j]);
-		}
-		fprintf(interfacefp, "\n");
-		//remise à zéro
-		for (int j=0; j<ncol; j++){
-			line_interface[j]=0;
-		}		
+	}
+	//ecriture dans fichier output
+	for (int j=0; j<ncol; j++){
+		fprintf(interfacefp, "%d ", line_interface[j]);
+	}
+	fprintf(interfacefp, "\n");
+	//remise à zéro
+	for (int j=0; j<ncol; j++){
+		line_interface[j]=0;
+	}		
 }
 
 
 void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells) {
-	if ((*nb_cellules)==(maxcells-1)) return;
+	if (cells.celltype[num_cell]==0) return;
+	if ((*nb_cellules)>=(maxcells-1)) return;
 	int x0 = (int)cells.xcoord[num_cell];
 	if (x0==0) x0=1;
 	int y0 = (int)cells.ycoord[num_cell];
@@ -496,6 +497,7 @@ void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb
 	cells.celltype[num_new_cell] = cells.celltype[num_cell];
 	cells.t_debut_division[num_new_cell] = cells.t_debut_division[num_cell];
 	cells.interphase[num_new_cell] = cells.interphase[num_cell];
+	cells.vient_de_diviser[num_new_cell]=0;
 
 	//printf("je parcours les environs de la cellule\n");
 	// y++; if (y==(ncol+1)) y=1;
@@ -524,25 +526,43 @@ void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb
 	//printf("R=%d\n",R);
 	if(R==0) printf("ATTENTION R=0\n");
 	int D =4*R;
-	for(int i=0; i<=D; i++){
-		int ip=x+i; if (ip>=(nrow+1)) ip=ip-nrow;
-		for(int j=0; j<=D; j++){
-			int jp=y+j; if (jp>=(ncol+1)) jp=jp-ncol;
+
+	// for(int i=0; i<=D; i++){
+	// 	int ip=x+i; if (ip>=(nrow+1)) ip=ip-nrow;
+	// 	for(int j=0; j<=D; j++){
+	// 		int jp=y+j; if (jp>=(ncol+1)) jp=jp-ncol;
+	// 		if (state[ip][jp]==num_cell) {
+	// 			state[ip][jp]=num_new_cell;
+	// 			cells.area[num_cell]--;
+	// 			cells.area[num_new_cell]++;
+	// 		}
+	// 	}
+	// 	for(int j=0; j<=D; j++){
+	// 		int jp=y-j; if (jp<=0) jp=ncol+jp;
+	// 		if (state[ip][jp]==num_cell) {
+	// 			state[ip][jp]=num_new_cell;
+	// 			cells.area[num_cell]--;
+	// 			cells.area[num_new_cell]++;				
+	// 		}
+	// 	}
+	// }
+
+	double theta = aleatoire(0)*2* M_PI;
+	for(int i=-D; i<=D; i++){
+		int ip=x+i; if (ip>=(nrow+1)) ip=ip-nrow; if (ip<=0) ip=nrow+ip; 
+		for(int j=-D; j<=D; j++){
+			int jp=y+j; if (jp>=(ncol+1)) jp=jp-ncol; if (jp<=0) jp=ncol+jp;
 			if (state[ip][jp]==num_cell) {
-				state[ip][jp]=num_new_cell;
-				cells.area[num_cell]--;
-				cells.area[num_new_cell]++;
-			}
-		}
-		for(int j=0; j<=D; j++){
-			int jp=y-j; if (jp<=0) jp=ncol+jp;
-			if (state[ip][jp]==num_cell) {
-				state[ip][jp]=num_new_cell;
-				cells.area[num_cell]--;
-				cells.area[num_new_cell]++;				
+				if ((i*cos(theta) + j*sin(theta)) > 0) {
+					state[ip][jp]=num_new_cell;
+					cells.area[num_cell]--;
+					cells.area[num_new_cell]++;
+				}
 			}
 		}
 	}
+
+	cells.vient_de_diviser[num_cell]=1;
 	//printf("j'ai fait une division, cellule= %d, new_cellule= %d, nb_cellules=%d\n", num_cell, num_new_cell, *nb_cellules);
 }
 
@@ -576,6 +596,7 @@ void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, 
 					
 					cells.nneighbours[k]++;
 					if(cells.nneighbours[k]>=maxneighbours){
+						printf("trop de voisins! =%d\n",cells.nneighbours[k] );
 						fprintf(stderr,"Error, FindNeighbours: increase MAXNEIGHBOURS\n");
 						exit(EXIT_FAILURE);
 					}
@@ -624,13 +645,22 @@ void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subd
 		PLANE(
 			if(state[i][j]!=0){
 				if(cells.celltype[state[i][j]]==1)
-					nstate[i][j]=4;
+					nstate[i][j]=4;  //4  10=rouge
 				else
-					nstate[i][j]=8;
+					nstate[i][j]=8;  //8 
 			}
-			else
+			else 
 				nstate[i][j]=1;
+			
+			if (cells.vient_de_diviser[state[i][j]]==1) {
+				//printf("cette cellule s'est divisée\n");
+				nstate[i][j]=10;
+				//cells.vient_de_diviser[state[i][j]] = 0;
+			} 
 		);
+		PLANE(
+			if (nstate[i][j]==10) cells.vient_de_diviser[state[i][j]] = 0;
+		)
 	}
 	else if (affichage == 3) {
 		PLANE(
