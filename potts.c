@@ -121,7 +121,9 @@ int main(int argc, char *argv[])
 	int* line_interface; //interface entre les deux tissus cellulaires
 	int division_cellulaire=0;
 	int interphase1=100, interphase2=100;
-	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0;
+	int apoptose=0;
+	int duree_de_vie1=100, duree_de_vie2=100;
+	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0, nb_cellules_par_division=0, nb_cellules_mortes=0;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
@@ -138,6 +140,9 @@ int main(int argc, char *argv[])
 	InDat("%d","division_cellulaire",&division_cellulaire);
 	InDat("%d","interphase1",&interphase1);
 	InDat("%d","interphase2",&interphase2);
+	InDat("%d","apoptose",&apoptose);
+	InDat("%d","duree_de_vie1",&duree_de_vie1);
+	InDat("%d","duree_de_vie2",&duree_de_vie2);
 	
 	InDat("%d","heat_bath",&heat_bath);
 		
@@ -291,6 +296,10 @@ int main(int argc, char *argv[])
 		printf("maxcells=%d\n", maxcells);
 	}
 	
+	int pile_labels_libres[2*maxcells]; //conserver les labels libérés après apoptose
+	memset(pile_labels_libres, 0, 2*maxcells);
+	int taille_pile_labels_libres=0;
+
 	if (affichage>3)
 		//ColorRandom(0,maxcells); //maxcells ne doit pas dépasser 451 (???) pour que cette fonction marche
 		for (int i=1;i<maxcells+1;i++) {
@@ -370,7 +379,7 @@ int main(int argc, char *argv[])
 
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
 	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
-		interphase1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire);
+		interphase1, duree_de_vie1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire, apoptose);
 	printf("j'ai fait InitBubble\n");
 	printf("nb_cellules = %d\n", nb_cellules);
 
@@ -466,8 +475,9 @@ int main(int argc, char *argv[])
 			break;
 		if(ttime==dispersetime){
 			deleted=GeneratePolydispersity(polydispersity,blob,maxcells,fillfactor,nrow,ncol,target_area,targetareamu2,target_area2,alpha,cells[0], area_constraint2, 
-				interphase2, &nb_cellules, &nb_cellules1, &nb_cellules2);
-			printf("j'ai fait GeneratePolydispersity\n");	
+				interphase2, duree_de_vie2, &nb_cellules, &nb_cellules1, &nb_cellules2);
+
+			printf("j'ai fait GeneratePolydispersity, deleted=%d\n", deleted);	
 			printf("nb_cellules = %d\n", nb_cellules);
 			printf("nb_cellules1 = %d\n", nb_cellules1);
 			printf("nb_cellules2 = %d\n", nb_cellules2);
@@ -547,7 +557,7 @@ int main(int argc, char *argv[])
 				side_interface12=0;
 				side_interface10=0;
 				side_interface20=0;
-				FindNeighbours(nb_cellules, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface12, &side_interface10, &side_interface20);
+				FindNeighbours(nb_cellules+1, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface12, &side_interface10, &side_interface20);
 				fprintf(neighbourfp[ind],"# time: %d\n",ttime);
 				fprintf(voisinsfp[ind],"# time: %d\n",ttime);
 				fprintf(coordfp[ind],"%d",ttime);
@@ -771,27 +781,57 @@ int main(int argc, char *argv[])
 			BubbleHamiltonian(ttime, dispersetime, 0, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[0], mediumcell, heat_bath, Jarray, cells[0], area_constraint , temperature[0]);
 		}
 		if (!(ttime%100)) {
-			printf("temps %d\n", ttime);
-			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, maxcells: %d\n", nb_cellules,nb_cellules1, nb_cellules2, maxcells);
+			printf("\ntemps %d\n", ttime);
+			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, taille de la pile: %d, maxcells: %d\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, taille_pile_labels_libres, maxcells);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
 			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
 			printf("j'ai ecrit line_interface\n");
 		}
+
 		if(ttime>dispersetime && division_cellulaire){
 			//printf("je vais tenter la division\n");
-			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules, mediumcell);
+			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
 			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
-				int tdebut = cells[0].t_debut_division[num_cell];
-				int dinterphase = cells[0].interphase[num_cell];
-				if (!((ttime-tdebut)%dinterphase)) {
-					// printf("temps de diviser la cellule %d\n",num_cell);
-					// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
-					Diviser(cells[0], num_cell, nrow, ncol, state[0], &nb_cellules, &nb_cellules1, &nb_cellules2, maxcells);
+				if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell]) {
+					int tdebut = cells[0].t_debut_division[num_cell];
+					int dinterphase = cells[0].interphase[num_cell];
+					if (!((ttime-tdebut)%dinterphase)) {
+						// printf("temps de diviser la cellule %d\n",num_cell);
+						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
+						Diviser(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_par_division, 
+							&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres);
+					}
+				}
+			}
+		for(int num_cell=1; num_cell<=nb_cellules; num_cell++){
+			cells[0].vient_de_naitre[num_cell] = 0;
+		}
+		}
+
+		if(ttime>dispersetime && apoptose){
+			//printf("je vais tenter l'apoptose\n");
+			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
+			int nb_cellules_courant=nb_cellules;
+			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
+				if (cells[0].celltype[num_cell] != 0) {
+					int tdebut = cells[0].t_debut_division[num_cell];
+					int dvie = cells[0].duree_de_vie[num_cell];
+					if (ttime>tdebut && !((ttime-tdebut)%dvie) && !cells[0].vient_de_diviser[num_cell]) {
+					//if (ttime==tdebut+dvie) {	
+						// printf("temps de diviser la cellule %d\n",num_cell);
+						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
+						Tuer_cellule(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_mortes, 
+							&nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres);		
+					}
 				}
 			}
 		}
+		for(int num_cell=1; num_cell<=nb_cellules; num_cell++){
+			cells[0].vient_de_diviser[num_cell] = 0;
+		}
+
 	}
 	printf("fin du programme\n");
 	fclose(interfacefp); 

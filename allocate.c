@@ -64,7 +64,27 @@ Cell AllocateCells(int n, int maxneighbour) {
 	if((cells.vient_de_diviser=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
-	}			
+	}	
+	if((cells.vient_de_diviser_pour_affichage=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}		
+	if((cells.vient_de_naitre=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}		
+	if((cells.duree_de_vie=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}		
+	if((cells.morte=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}	
+	if((cells.vient_de_mourir=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}					
 	for(i=0;i<n;i++){
 		if((cells.neighbours[i]=(int *)calloc((size_t)maxneighbour,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
@@ -162,7 +182,7 @@ int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, i
 }
 
 void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1, 
-	int interphase1, int* nb_cellules, int* nb_cellules_vivantes,int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire) {
+	int interphase1, int duree_de_vie1, int* nb_cellules, int* nb_cellules_vivantes,int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire, int apoptose) {
 	//rq: étrange, si fillfactor est déclaré en double, plutôt que float, alors target_area/fillfactor donne des résulats étrange: par exemple, si target_area=110 et fillfactor=1.1, le rapport des deux obtenus est 99 !!
 	int i,j,k;
 	int cellarea=9; //taille par défaut de la graine de chaque bulle
@@ -171,7 +191,7 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 	
 	//int number=(int)(fillfactor*nrow*ncol/target_area);
 	int number=maxcells;
-	if (division_cellulaire)  number = number/4;   //générer moins de cellules pour division cellulaire
+	if (division_cellulaire && !apoptose)  number = number/4;   //générer moins de cellules pour division cellulaire
 		
 	k=1;
 	while(k<number){
@@ -289,9 +309,10 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 			cells.area_constraint[k]=area_constraint1;
 			cells.celltype[k]=1;
 			cells.targetarea[k]=target_area;
-			cells.t_debut_division[k]= (int) (aleatoire(0)*interphase1);
+			cells.t_debut_division[k]= (int) (aleatoire(0)*interphase1) + 1;
 			cells.interphase[k]=interphase1;
 			cells.vient_de_diviser[k]=0;
+			cells.duree_de_vie[k]= duree_de_vie1; //(int) (aleatoire(0)*2*duree_de_vie1) + 1;
 			(*nb_cellules)++;
 			(*nb_cellules_vivantes)++;
 			(*nb_cellules1)++;
@@ -309,7 +330,7 @@ int AssignNormalTargetarea(int mean, double mu2adim, int minimum) {
 }
 
 int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
-	int interphase2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2) { 
+	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2) { 
 	int ksigma, meantargetarea, totaltargetarea=0, delet=0;
 	double randnum;
 	meantargetarea=target_area;
@@ -339,13 +360,14 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 				//frontière verticale entre les 2 types de bulles:
 				case 1:
 					//if(D_PeriodicWrap(cells.xcoord[ksigma],ncol)<(1-alpha)*ncol-sqrt(meantargetarea/3.14))
-					if(D_PeriodicWrap(cells.ycoord[ksigma],nrow)<(1-alpha)*nrow-sqrt(meantargetarea/3.14))
+					if(D_PeriodicWrap(cells.ycoord[ksigma],nrow)<(1-alpha)*nrow -sqrt(meantargetarea/3.14))
 						cells.targetarea[ksigma]=target_area;
 					else {
 						cells.targetarea[ksigma]=target_area2;
 						cells.celltype[ksigma]=2;
 						cells.area_constraint[ksigma]=area_constraint2;
 						cells.interphase[ksigma]=interphase2;
+						cells.duree_de_vie[ksigma]=duree_de_vie2; //(int) (aleatoire(0)*2*duree_de_vie2) + 1;
 						(*nb_cellules1)--;
 						(*nb_cellules2)++;
 					}
@@ -377,14 +399,15 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 						cells.targetarea[ksigma]=target_area2;
 						cells.celltype[ksigma]=2;
 					}
-				}
+				
 				totaltargetarea+=cells.targetarea[ksigma];
 				if(totaltargetarea-meantargetarea>fillfactor*nrow*ncol){
 					cells.targetarea[ksigma]=0;
 					delet++;
 				}
-			}
-		}
+				}
+			}//bon
+		}//bon
 		break;
 	//tridisperse:
 	case 3:
@@ -419,6 +442,8 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 				}
 			}
 		}
-	}
+	
 	return delet;
-}
+	
+}//bon
+}//bon

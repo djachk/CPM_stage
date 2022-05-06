@@ -390,30 +390,33 @@ void ComputeCenterCoords(Cell cells, int ncol, int nrow, TYPE **state, int nbrce
 		}		
 	}
 	for(k=mediumcell+1;k<nbrcells;k++){ //A cause des conditions aux limites périodiques, il faut regrouper les domaines cellulaires partagés.
-		airehaut=airehautgauche[k]+airehautdroite[k];
-		airebas=airebasgauche[k]+airebasdroite[k];
-		airegauche=airehautgauche[k]+airebasgauche[k];
-		airedroite=airehautdroite[k]+airebasdroite[k];
-		if(airehaut + airebas != cells.area[k] || cells.area[k]==0){
-			fprintf(stderr,"error: il y a une fuite d'aire de la cellule n°%d !\n",k);
-			//exit(EXIT_FAILURE);
+		if (cells.celltype[k] != 0) {
+			airehaut=airehautgauche[k]+airehautdroite[k];
+			airebas=airebasgauche[k]+airebasdroite[k];
+			airegauche=airehautgauche[k]+airebasgauche[k];
+			airedroite=airehautdroite[k]+airebasdroite[k];
+			if(airehaut + airebas != cells.area[k] || cells.area[k]==0){
+				fprintf(stderr,"error: il y a une fuite d'aire de la cellule n°%d ! dont le type est %d et l'aire est %d\n", \
+					k, cells.celltype[k], cells.area[k]);
+				//exit(EXIT_FAILURE);
+			}
+			if (2*xdroite[k]*airegauche - 2*xgauche[k]*airedroite > airegauche*airedroite*ncol){
+			//if (xdroite[k]/airedroite - xgauche[k]/airegauche > ncol/2){ //critère pour déterminer si la cellule est à cheval sur les bords.
+				if(airegauche > airedroite)//on déplace la plus petite des deux moitiés
+					xdroite[k]=xdroite[k]-ncol*airedroite;
+				else
+					xgauche[k]=xgauche[k]+ncol*airegauche;
+			}
+			if (2*ybas[k]*airehaut - 2*yhaut[k]*airebas > airehaut*airebas*nrow){
+			//if (ybas[k]/airebas - yhaut[k]/airehaut > nrow/2){
+				if(airehaut > airebas)
+					ybas[k]=ybas[k]-nrow*airebas;
+				else
+					yhaut[k]=yhaut[k]+nrow*airehaut;
+			}
+			cells.xcoord[k]=(double)(xgauche[k]+xdroite[k])/cells.area[k]; //il faudra reitrer la division par cells.area pour ne travailler qu'avec des entiers
+			cells.ycoord[k]=(double)(ybas[k]+yhaut[k])/cells.area[k];
 		}
-		if (2*xdroite[k]*airegauche - 2*xgauche[k]*airedroite > airegauche*airedroite*ncol){
-		//if (xdroite[k]/airedroite - xgauche[k]/airegauche > ncol/2){ //critère pour déterminer si la cellule est à cheval sur les bords.
-			if(airegauche > airedroite)//on déplace la plus petite des deux moitiés
-				xdroite[k]=xdroite[k]-ncol*airedroite;
-			else
-				xgauche[k]=xgauche[k]+ncol*airegauche;
-		}
-		if (2*ybas[k]*airehaut - 2*yhaut[k]*airebas > airehaut*airebas*nrow){
-		//if (ybas[k]/airebas - yhaut[k]/airehaut > nrow/2){
-			if(airehaut > airebas)
-				ybas[k]=ybas[k]-nrow*airebas;
-			else
-				yhaut[k]=yhaut[k]+nrow*airehaut;
-		}
-		cells.xcoord[k]=(double)(xgauche[k]+xdroite[k])/cells.area[k]; //il faudra reitrer la division par cells.area pour ne travailler qu'avec des entiers
-		cells.ycoord[k]=(double)(ybas[k]+yhaut[k])/cells.area[k];
 	}
 }
 
@@ -466,24 +469,36 @@ void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYP
 }
 
 
-void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int maxcells) {
+void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
+	int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, int maxcells, int duree_de_vie1, 
+	int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres) {
+
 	if (cells.celltype[num_cell]==0) return;
-	if ((*nb_cellules)>=(maxcells-1)) return;
+	if ((*nb_cellules)>=(maxcells-1) && ((*taille_labels_libres)==0)) return;
 	int x0 = (int)cells.xcoord[num_cell];
 	if (x0==0) x0=1;
 	int y0 = (int)cells.ycoord[num_cell];
 	if (y0==0) y0=1;
 	int x=y0,y=x0;  //attention à l'inversion
-	// printf("valeur de state[y0][x0]= "); 
-	// printf("%d\n", state[y0][x0]);
 	if (state[y0][x0] != num_cell) {
-		printf("attention, centre cellule %d mal positionné, je ne divise pas cette cellule\n", num_cell);
-		return;
+		//printf("attention dans Diviser, centre cellule %d mal positionné, je ne divise pas cette cellule\n", num_cell);
+		printf("attention dans Diviser, centre cellule %d dont type est %d mal positionné, je divise quand même cette cellule\n", 
+			num_cell, cells.celltype[num_cell]);		
+		//return;
 	}
-
-	int num_new_cell=(*nb_cellules) + 1;
+	//printf("je divise la cellule %d dont l'age est %d\n",num_cell, ttime - cells.t_debut_division[num_cell]);
+	int num_new_cell=0;
+	if ((*taille_labels_libres)==0) {
+		num_new_cell=(*nb_cellules) + 1;
+		(*nb_cellules)++;
+	} else {
+		num_new_cell=pile_labels_libres[(*taille_labels_libres)-1];
+		(*taille_labels_libres)--;
+	}
 	
-	(*nb_cellules)++;
+	
+	(*nb_cellules_vivantes)++;
+	(*nb_cellules_par_division)++;
 	if (cells.celltype[num_cell] == 1) {
 		(*nb_cellules1)++;
 	}
@@ -495,9 +510,13 @@ void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb
 	cells.area[num_new_cell] = 0;
 	cells.area_constraint[num_new_cell] = cells.area_constraint[num_cell];
 	cells.celltype[num_new_cell] = cells.celltype[num_cell];
-	cells.t_debut_division[num_new_cell] = cells.t_debut_division[num_cell];
+	cells.t_debut_division[num_new_cell] = ttime; //cells.t_debut_division[num_cell]; //ttime;
 	cells.interphase[num_new_cell] = cells.interphase[num_cell];
-	cells.vient_de_diviser[num_new_cell]=0;
+	if (cells.celltype[num_new_cell]==1) {
+		cells.duree_de_vie[num_new_cell] = duree_de_vie1; //(int) (aleatoire(0)*2*duree_de_vie1) + 1;
+	}else if (cells.celltype[num_new_cell]==2) {
+		cells.duree_de_vie[num_new_cell] = duree_de_vie2; //(int) (aleatoire(0)*2*duree_de_vie2) + 1;
+	}
 
 	//printf("je parcours les environs de la cellule\n");
 	// y++; if (y==(ncol+1)) y=1;
@@ -563,7 +582,72 @@ void Diviser(Cell cells, int num_cell, int nrow, int ncol, TYPE** state, int* nb
 	}
 
 	cells.vient_de_diviser[num_cell]=1;
+	cells.vient_de_diviser[num_new_cell]=1;
+	cells.vient_de_diviser_pour_affichage[num_new_cell]=1;
+	cells.vient_de_naitre[num_new_cell]=1;
 	//printf("j'ai fait une division, cellule= %d, new_cellule= %d, nb_cellules=%d\n", num_cell, num_new_cell, *nb_cellules);
+}
+
+
+void Tuer_cellule(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
+	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres) {
+
+	if (cells.celltype[num_cell]==0) return;
+
+	int x0 = (int)cells.xcoord[num_cell];
+	if (x0==0) x0=1;
+	int y0 = (int)cells.ycoord[num_cell];
+	if (y0==0) y0=1;
+	int x=y0,y=x0;  //attention à l'inversion
+	if (state[y0][x0] != num_cell) {
+		printf("attention dans Tuer_cellule, centre cellule %d dont type est %d mal positionné, je tue quand même cette cellule\n", 
+			num_cell, cells.celltype[num_cell]);
+		//printf("détails: y0=%d, x0=%d, state[y0][x0]=%d\n",y0,x0, state[y0][x0]);		
+		//return;
+	}
+	//printf("je tue la cellule %d dont l'age est %d\n",num_cell, ttime - cells.t_debut_division[num_cell]);
+	(*nb_cellules_vivantes)--;
+	(*nb_cellules_mortes)++;
+	if (cells.celltype[num_cell] == 1) {
+		(*nb_cellules1)--;
+	}
+	else if (cells.celltype[num_cell] == 2) {
+		(*nb_cellules2)--;
+	}
+
+	int R = (int) sqrt(cells.area[num_cell]);
+	//printf("R=%d\n",R);
+	if(R==0) printf("ATTENTION R=0 dans Tuer_cellule\n");
+	int D =5*R;
+
+	(*taille_labels_libres)++;
+	if ((*taille_labels_libres) >= 2*maxcells-1) {
+		printf("attention, pile saturéé!!!\n");
+		return;
+	}
+	pile_labels_libres[(*taille_labels_libres)-1] = num_cell;
+
+	cells.targetarea[num_cell] = 0;
+	cells.area[num_cell] = 0;
+	cells.area_constraint[num_cell] = 0;
+	cells.celltype[num_cell] = 0;
+	cells.t_debut_division[num_cell] = 0;    //cells.t_debut_division[num_cell];
+	cells.interphase[num_cell] = 0;
+	cells.duree_de_vie[num_cell]=0;
+	cells.vient_de_mourir[num_cell]=1;
+
+	for(int i=-D; i<=D; i++){
+		int ip=x+i; if (ip>=(nrow+1)) ip=ip-nrow; if (ip<=0) ip=nrow+ip; 
+		for(int j=-D; j<=D; j++){
+			int jp=y+j; if (jp>=(ncol+1)) jp=jp-ncol; if (jp<=0) jp=ncol+jp;
+			if (state[ip][jp]==num_cell) {
+				state[ip][jp]=0;
+				cells.area[0]++;
+			}
+		}
+	}
+
+	//printf("j'ai fait une apoptose, cellule= %d, nb_cellules=%d\n", num_cell, *nb_cellules);
 }
 
 
@@ -596,7 +680,7 @@ void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, 
 					
 					cells.nneighbours[k]++;
 					if(cells.nneighbours[k]>=maxneighbours){
-						printf("trop de voisins! =%d\n",cells.nneighbours[k] );
+						printf("trop de voisins! =%d pour la cellule %d\n",cells.nneighbours[k], k);
 						fprintf(stderr,"Error, FindNeighbours: increase MAXNEIGHBOURS\n");
 						exit(EXIT_FAILURE);
 					}
@@ -652,14 +736,14 @@ void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subd
 			else 
 				nstate[i][j]=1;
 			
-			if (cells.vient_de_diviser[state[i][j]]==1) {
+			if (cells.vient_de_diviser_pour_affichage[state[i][j]]==1) {
 				//printf("cette cellule s'est divisée\n");
 				nstate[i][j]=10;
 				//cells.vient_de_diviser[state[i][j]] = 0;
 			} 
 		);
 		PLANE(
-			if (nstate[i][j]==10) cells.vient_de_diviser[state[i][j]] = 0;
+			if (nstate[i][j]==10) cells.vient_de_diviser_pour_affichage[state[i][j]] = 0;
 		)
 	}
 	else if (affichage == 3) {
@@ -694,6 +778,7 @@ void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subd
 	//plan affichage, plan cellules, yoffset, xoffset, coloroffset
 	CellPlaneDisplay(nstate,state,0,0,0);
 	//CellPlaneRAW2(subdirnameRAW,state,state,0);
+
 	PlaneRAW2(subdirnameRAW,state,state,0);
 	CellPlanePNG2(subdirname,nstate,state,0); //nstate définit dans quelle couleur une bulle apparaitra, tandis que state définit la position des bulles
 }
