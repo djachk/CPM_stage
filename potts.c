@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	double pression, pressionvoisine, curvature, mfacurvature, largecurvature, smallcurvature, largetemperature, smalltemperature, largemuprime, smallmuprime, largenumberofsides, smallnumberofsides, actual_temperature;
 	char Jval[200], output[200], loadname[200];
 	char neighbourfile[200], coordinatefile[200], subsystemsfile[200], voisinsfile[200], swapfile[200], acceptancefile[200], savefile[250], loadfile[250], moviefile[200];//,systcmd[200], parfile[200]; No used. See output part.
-	int movie = 1,movieinterval=50, writinginterval=50, saveinterval=50, annealing=0, annealing_time=20, ttime=1, time_load=1, dispersetime=100, temperinginterval = 100;
+	int movie = 1, t_debut_movie=0, movieinterval=50, writinginterval=50, saveinterval=50, annealing=0, annealing_time=20, ttime=1, time_load=1, dispersetime=100, temperinginterval = 100;
 	int heat_bath = 0, nb_temperature;
 	//int *targetarea, *cellarea, *perimeter, *celltype, *oldperimeter, *targetperimeter; long largenumberofsides,smallnumberofsides;
 	int **Jarray; //a 2D array for the interaction energies between cells
@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 	InDat("%lu","seed",&seed);
 	InDat("%d","dispersetime",&dispersetime);
 	InDat("%d","movie",&movie);
+	InDat("%d","t_debut_movie",&t_debut_movie);
 	InDat("%d","affichage",&affichage);
 	InDat("%d","movieinterval",&movieinterval);
 	InDat("%d","writinginterval",&writinginterval);
@@ -119,11 +120,13 @@ int main(int argc, char *argv[])
 	TYPE **state[nb_temperature], **nstate, **copystate, **copynstate; //a 2D array. TYPE = int. For speeding up calculations, TYPE can be set in cash.h
 	Cell cells[nb_temperature], copycells;
 	int* line_interface; //interface entre les deux tissus cellulaires
-	int division_cellulaire=0;
-	int interphase1=100, interphase2=100;
+	int nb_interfaces_ecrites=0;
+	int division_cellulaire=0, commencer_division=0;
+	int interphase1=100, interphase2=100, intervalle_debut=500;
 	int apoptose=0;
 	int duree_de_vie1=100, duree_de_vie2=100;
 	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0, nb_cellules_par_division=0, nb_cellules_mortes=0;
+	int nb_cellules_condamnees=0, nb_cellules_tuees=0, cote_carre=5;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
@@ -140,6 +143,7 @@ int main(int argc, char *argv[])
 	InDat("%d","division_cellulaire",&division_cellulaire);
 	InDat("%d","interphase1",&interphase1);
 	InDat("%d","interphase2",&interphase2);
+	InDat("%d","intervalle_debut",&intervalle_debut);
 	InDat("%d","apoptose",&apoptose);
 	InDat("%d","duree_de_vie1",&duree_de_vie1);
 	InDat("%d","duree_de_vie2",&duree_de_vie2);
@@ -205,8 +209,8 @@ int main(int argc, char *argv[])
 	FILE *swapfp, *moviefp, *savefp, *loadfp, *acceptancefp;
 	FILE* interfacefp; // ecriture des lignes d'interface
 	char nom_fich_interface[100];
-	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=2000_B1=20000_B2=20000-div.txt",(int)temperature_max); //un fichier pour chaque temperature
-	interfacefp=fopen(nom_fich_interface,"w");
+	//sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=2000_B1=20000_B2=20000-div.txt",(int)temperature_max); //un fichier pour chaque temperature
+	//interfacefp=fopen(nom_fich_interface,"w");
 	snprintf(output,200,"%s",argv[2]); //argv[2] est le 2eme argument passé au programme. Il s'agit donc du nom du dossier de la simul
 	snprintf(savefile,200,"%s/%s.save",argv[2],argv[2]);
 	snprintf(loadfile,200,"%s/%s.save",argv[2],loadname);
@@ -287,7 +291,7 @@ int main(int argc, char *argv[])
 	*/
 //---------------------------------------------------------------------------------
 
-	maxcells = (int)(ncol*nrow*fillfactor/target_area)+1;
+	maxcells = 10*((int)(ncol*nrow*fillfactor/target_area)+1);
 	if (init_config==0 || init_config==6){
 		maxcells=2; //si l'on veut qu'une seule bulle
 	}
@@ -376,10 +380,14 @@ int main(int argc, char *argv[])
 			Jarray[j][i]=Jarray[i][j];
 		}
 	}
-
+	//fichier pour ecrire les interfaces
+	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterfaceT=%d_J12=%d_B1=%d_B2=%d.txt",(int)temperature_max, Jarray[1][2], (int)area_constraint1, (int)area_constraint2); //un fichier pour chaque temperature
+	interfacefp=fopen(nom_fich_interface,"w");
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
+	cells[0].area[0]=ncol*nrow;  // cellule medium cell occupe toy l'espace au départ
 	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
-		interphase1, duree_de_vie1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire, apoptose);
+		interphase1, duree_de_vie1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire, apoptose, intervalle_debut, &commencer_division);
+
 	printf("j'ai fait InitBubble\n");
 	printf("nb_cellules = %d\n", nb_cellules);
 
@@ -675,7 +683,7 @@ int main(int argc, char *argv[])
 			}
 			
 		}
-		if (movie && neighbour_connected != 6 && (ttime>=dispersetime)&&(!(ttime%movieinterval))){
+		if (movie && ttime>t_debut_movie && neighbour_connected != 6 && (ttime>=dispersetime)&&(!(ttime%movieinterval))){
 			//Affichage carré.
 			for (int ind=0;ind<nb_temperature;ind++) {
 				//side_interface=0;
@@ -744,7 +752,9 @@ int main(int argc, char *argv[])
 				//for (int j=0;j<pi+1;j++) { boucle si l'on veut que l'on fasse plus de MCS dans les sytèmes à plus hautes températures
 					//#pragma omp critical
 					//{
-					energie[pi] += BubbleHamiltonian(ttime, dispersetime, pi, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[pi], mediumcell, heat_bath, Jarray, cells[pi], area_constraint , temperature[pi]);
+					energie[pi] += BubbleHamiltonian(ttime, dispersetime, pi, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[pi], mediumcell, heat_bath, Jarray, cells[pi], area_constraint , temperature[pi], \
+					&nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
+
 					//}
 				//}
 			}
@@ -778,18 +788,20 @@ int main(int argc, char *argv[])
 				fclose(swapfp);
 			}
 		} else {
-			BubbleHamiltonian(ttime, dispersetime, 0, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[0], mediumcell, heat_bath, Jarray, cells[0], area_constraint , temperature[0]);
+			BubbleHamiltonian(ttime, dispersetime, 0, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[0], mediumcell, heat_bath, Jarray, cells[0], area_constraint , temperature[0], \
+			 &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
 		}
 		if (!(ttime%100)) {
 			printf("\ntemps %d\n", ttime);
-			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, taille de la pile: %d, maxcells: %d\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, taille_pile_labels_libres, maxcells);
+			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, taille de la pile: %d, maxcells: %d, nb_cellules_condamnees: %d, nb_cellules_tuees: %d\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules_tuees);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
 			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
-			printf("j'ai ecrit line_interface\n");
+			nb_interfaces_ecrites++;
+			printf("j'ai ecrit %d interfaces\n", nb_interfaces_ecrites);
 		}
 
-		if(ttime>dispersetime && division_cellulaire){
+		if(ttime>dispersetime && division_cellulaire && commencer_division){
 			//printf("je vais tenter la division\n");
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
@@ -798,10 +810,11 @@ int main(int argc, char *argv[])
 					int tdebut = cells[0].t_debut_division[num_cell];
 					int dinterphase = cells[0].interphase[num_cell];
 					if (!((ttime-tdebut)%dinterphase)) {
+					//if (ttime> tdebut + dinterphase) {	
 						// printf("temps de diviser la cellule %d\n",num_cell);
 						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
-						Diviser(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_par_division, 
-							&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres);
+						Diviser(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_par_division, 
+							&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres, cote_carre);
 					}
 				}
 			}
@@ -810,7 +823,7 @@ int main(int argc, char *argv[])
 		}
 		}
 
-		if(ttime>dispersetime && apoptose){
+		if(ttime>dispersetime && apoptose && commencer_division){
 			//printf("je vais tenter l'apoptose\n");
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
@@ -818,12 +831,16 @@ int main(int argc, char *argv[])
 				if (cells[0].celltype[num_cell] != 0) {
 					int tdebut = cells[0].t_debut_division[num_cell];
 					int dvie = cells[0].duree_de_vie[num_cell];
-					if (ttime>tdebut && !((ttime-tdebut)%dvie) && !cells[0].vient_de_diviser[num_cell]) {
+						//printf("je suis AVANT LE IF la boucle Condamner pour la cellule %d\n",num_cell);
+					//if (ttime>tdebut && !((ttime-tdebut)%dvie) && !cells[0].vient_de_diviser[num_cell]) {
+					if (ttime>tdebut && !((ttime-tdebut)%dvie) ) {
+						//printf("je suis dans la boucle Condamner pour la cellule %d\n",num_cell);
 					//if (ttime==tdebut+dvie) {	
 						// printf("temps de diviser la cellule %d\n",num_cell);
 						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
-						Tuer_cellule(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_mortes, 
-							&nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres);		
+						Condamner_cellule(cells[0], num_cell, &nb_cellules_condamnees);
+						// Tuer_cellule(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_mortes, 
+						// 	&nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, cote_carre);		
 					}
 				}
 			}

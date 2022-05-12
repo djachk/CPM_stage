@@ -84,7 +84,11 @@ Cell AllocateCells(int n, int maxneighbour) {
 	if((cells.vient_de_mourir=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
-	}					
+	}	
+	if((cells.condamnee=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}						
 	for(i=0;i<n;i++){
 		if((cells.neighbours[i]=(int *)calloc((size_t)maxneighbour,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
@@ -182,7 +186,7 @@ int PutCell(TYPE **plane, int y, int x, TYPE m, int ncol, int nrow, int side1, i
 }
 
 void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int target_area, double a1, double a2, TYPE **state, Cell cells, int sliding, double area_constraint1, 
-	int interphase1, int duree_de_vie1, int* nb_cellules, int* nb_cellules_vivantes,int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire, int apoptose) {
+	int interphase1, int duree_de_vie1, int* nb_cellules, int* nb_cellules_vivantes,int* nb_cellules1, int* nb_cellules2, int maxcells, int division_cellulaire, int apoptose, int intervalle_debut, int* commencer_division) {
 	//rq: étrange, si fillfactor est déclaré en double, plutôt que float, alors target_area/fillfactor donne des résulats étrange: par exemple, si target_area=110 et fillfactor=1.1, le rapport des deux obtenus est 99 !!
 	int i,j,k;
 	int cellarea=9; //taille par défaut de la graine de chaque bulle
@@ -190,9 +194,10 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 	
 	
 	//int number=(int)(fillfactor*nrow*ncol/target_area);
-	int number=maxcells;
-	if (division_cellulaire && !apoptose)  number = number/4;   //générer moins de cellules pour division cellulaire
-		
+	int number=(int) (maxcells/10); 
+	//if (division_cellulaire && !apoptose)  number = number/4;   //générer moins de cellules pour division cellulaire
+	//if (division_cellulaire && apoptose)  number = (number/4)*3;
+
 	k=1;
 	while(k<number){
 	//while(k<1+number){
@@ -306,12 +311,15 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 			cells.xcoord[k]=j;
 			cells.ycoord[k]=i;
 			cells.area[k]=cellarea;
+			cells.area[0]-=9;  //on diminue la surface de medium cell de 9, soit cellarea
+			if (cells.area[0]==0 && !(*commencer_division))  (*commencer_division)=1;
 			cells.area_constraint[k]=area_constraint1;
 			cells.celltype[k]=1;
 			cells.targetarea[k]=target_area;
-			cells.t_debut_division[k]= (int) (aleatoire(0)*interphase1) + 1;
+			cells.t_debut_division[k]= (int) (aleatoire(0)*intervalle_debut) + 1;  //(int) (aleatoire(0)*interphase1) + 1;
 			cells.interphase[k]=interphase1;
 			cells.vient_de_diviser[k]=0;
+			cells.condamnee[k]=0;
 			cells.duree_de_vie[k]= duree_de_vie1; //(int) (aleatoire(0)*2*duree_de_vie1) + 1;
 			(*nb_cellules)++;
 			(*nb_cellules_vivantes)++;

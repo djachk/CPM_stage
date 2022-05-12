@@ -10,7 +10,16 @@
 
 #include "allocate.h"
 
-double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_energy, int neighbour_copy, int neighbour_connected, int ncol, int nrow, TYPE **state, int mediumcell, int heat_bath, int** Jarray, Cell cells, double area_constraint , double temperature);
+typedef struct point point;
+
+struct point {
+    int x;
+    int y;
+};
+
+
+double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_energy, int neighbour_copy, int neighbour_connected, int ncol, int nrow, TYPE **state, int mediumcell, int heat_bath, int** Jarray, Cell cells, double area_constraint , double temperature,
+    int* nb_cellules_vivantes, int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int* commencer_division, int* nb_cellules_tuees);
 
 bool test_only_two(TYPE **state, bool condwrap, int neighbour_copy, int pixel, int icandidate, int ncol, int nrow, int x, int y);
 
@@ -20,11 +29,16 @@ bool connected_8(TYPE **state, int nb_nei_id, bool condwrap, int pixel, int ncol
 
 void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface);
 void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-    int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, int maxcells, int duree_de_vie1, 
-    int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres);
+    int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, int maxcells, int duree_de_vie1, 
+    int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre);
 
 void Tuer_cellule(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres);
+	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int cote_carre);
+
+void Condamner_cellule(Cell cells, int num_cell, int* nb_cellules_condamnees);
+
+void Empiler_cellule_vide(Cell cells, int num_cell, int* nb_cellules_vivantes, 
+	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int origine);
 
 void ComputePerimeter(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, int mediumcell, int neighbour_energy);
 void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, int mediumcell, int neighbour_connnected, int maxneighbours, int* side_interf12, int* side_interf10, int* side_interf20);
