@@ -126,7 +126,8 @@ int main(int argc, char *argv[])
 	int apoptose=0;
 	int duree_de_vie1=100, duree_de_vie2=100;
 	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0, nb_cellules_par_division=0, nb_cellules_mortes=0;
-	int nb_cellules_condamnees=0, nb_cellules_tuees=0, cote_carre=5;
+	int nb_divisions_acceptees=0, nb_divisions_refusees=0;
+	int nb_cellules_condamnees=0, nb_cellules_tuees=0, cote_carre=4;
 	double temperature[nb_temperature], energie[nb_temperature];
 	int trial[nb_temperature-1], acceptance[nb_temperature-1];
 	char subdirectory[nb_temperature][200], subdirectoryRAW[nb_temperature][200];
@@ -753,7 +754,7 @@ int main(int argc, char *argv[])
 					//#pragma omp critical
 					//{
 					energie[pi] += BubbleHamiltonian(ttime, dispersetime, pi, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[pi], mediumcell, heat_bath, Jarray, cells[pi], area_constraint , temperature[pi], \
-					&nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
+					&nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_condamnees, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
 
 					//}
 				//}
@@ -789,32 +790,50 @@ int main(int argc, char *argv[])
 			}
 		} else {
 			BubbleHamiltonian(ttime, dispersetime, 0, neighbour_energy, neighbour_copy, neighbour_connected, ncol, nrow, state[0], mediumcell, heat_bath, Jarray, cells[0], area_constraint , temperature[0], \
-			 &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
+			 &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_condamnees, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
 		}
 		if (!(ttime%100)) {
 			printf("\ntemps %d\n", ttime);
-			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, taille de la pile: %d, maxcells: %d, nb_cellules_condamnees: %d, nb_cellules_tuees: %d\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules_tuees);
+			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, nb_divisions_acceptees: %d, nb_divisions_refusees: %d, taille de la pile: %d, maxcells: %d, nb_cellules_condamnees: %d, nb_cellules_tuees: %d\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, nb_divisions_acceptees, nb_divisions_refusees, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules_tuees);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
 			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
 			nb_interfaces_ecrites++;
 			printf("j'ai ecrit %d interfaces\n", nb_interfaces_ecrites);
 		}
-
+		//test général connexité
+		// if(ttime>dispersetime){
+		// 	ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
+		// 	for(int num_cell=1; num_cell<=nb_cellules; num_cell++) {
+		// 		if (cells[0].celltype[num_cell] != 0) {
+		// 			int test=tester_cellule_connexe_boucle(cells[0],state[0], num_cell, cote_carre, nrow, ncol);
+		// 		}
+		// 	}
+		// }
+		//division
 		if(ttime>dispersetime && division_cellulaire && commencer_division){
 			//printf("je vais tenter la division\n");
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
 			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
 				if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell]) {
+					
 					int tdebut = cells[0].t_debut_division[num_cell];
+					int tderniere = cells[0].t_derniere_division[num_cell];
 					int dinterphase = cells[0].interphase[num_cell];
+					
+					if(ttime==tderniere + (int) dinterphase/10) {
+						cells[0].targetarea[num_cell]=cells[0].targetarea_original[num_cell];
+					}
 					if (!((ttime-tdebut)%dinterphase)) {
 					//if (ttime> tdebut + dinterphase) {	
 						// printf("temps de diviser la cellule %d\n",num_cell);
 						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
+						// Diviser_un_pixel(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_par_division, 
+						// 	&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres, cote_carre, neighbour_copy);			
 						Diviser(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_par_division, 
-							&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres, cote_carre);
+							&nb_cellules1, &nb_cellules2, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres, cote_carre,
+							&nb_divisions_acceptees, &nb_divisions_refusees);
 					}
 				}
 			}
@@ -822,7 +841,7 @@ int main(int argc, char *argv[])
 			cells[0].vient_de_naitre[num_cell] = 0;
 		}
 		}
-
+		//apoptose
 		if(ttime>dispersetime && apoptose && commencer_division){
 			//printf("je vais tenter l'apoptose\n");
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
@@ -838,7 +857,7 @@ int main(int argc, char *argv[])
 					//if (ttime==tdebut+dvie) {	
 						// printf("temps de diviser la cellule %d\n",num_cell);
 						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
-						Condamner_cellule(cells[0], num_cell, &nb_cellules_condamnees);
+						Condamner_cellule(cells[0], num_cell, &nb_cellules_condamnees, &nb_cellules_vivantes);
 						// Tuer_cellule(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes,  &nb_cellules_mortes, 
 						// 	&nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, cote_carre);		
 					}

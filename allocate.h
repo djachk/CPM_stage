@@ -12,6 +12,7 @@ typedef struct cell {
 	double *ycoord;
 	double *temp;
 	int *targetarea;
+	int *targetarea_original;
 	int *area;
 	double *area_constraint;
 	int *celltype;
@@ -21,6 +22,8 @@ typedef struct cell {
 	int *nneighbours;
 	int **neighbours;
 	int *t_debut_division;
+	int *t_derniere_division;	
+	int *petite_cellule;
 	int *interphase;
 	int *vient_de_diviser;
 	int *vient_de_diviser_pour_affichage;

@@ -25,6 +25,10 @@ Cell AllocateCells(int n, int maxneighbour) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
 	}
+	if((cells.targetarea_original=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}	
 	if((cells.area=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
@@ -57,6 +61,14 @@ Cell AllocateCells(int n, int maxneighbour) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
 	}	
+	if((cells.t_derniere_division=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}	
+	if((cells.petite_cellule=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}		
 	if((cells.interphase=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
@@ -316,7 +328,10 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 			cells.area_constraint[k]=area_constraint1;
 			cells.celltype[k]=1;
 			cells.targetarea[k]=target_area;
+			cells.targetarea_original[k]=target_area;
 			cells.t_debut_division[k]= (int) (aleatoire(0)*intervalle_debut) + 1;  //(int) (aleatoire(0)*interphase1) + 1;
+			cells.t_derniere_division[k]=cells.t_debut_division[k];
+			cells.petite_cellule[k]=0;
 			cells.interphase[k]=interphase1;
 			cells.vient_de_diviser[k]=0;
 			cells.condamnee[k]=0;
@@ -372,6 +387,7 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 						cells.targetarea[ksigma]=target_area;
 					else {
 						cells.targetarea[ksigma]=target_area2;
+						cells.targetarea_original[ksigma]=cells.targetarea[ksigma];
 						cells.celltype[ksigma]=2;
 						cells.area_constraint[ksigma]=area_constraint2;
 						cells.interphase[ksigma]=interphase2;
@@ -451,7 +467,8 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 			}
 		}
 	
-	return delet;
+	//return delet;
 	
 }//bon
+	return delet;
 }//bon
