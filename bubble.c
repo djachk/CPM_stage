@@ -9,12 +9,21 @@ static const int ny[36]={ 1,-1, 0, 0, 1,-1,-1, 1, 2,-2, 2,-2, 1,-1, 1,-1, 2,-2, 
 
 
 double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_energy, int neighbour_copy, int neighbour_connected, int ncol, int nrow, TYPE **state, int mediumcell, int heat_bath, int** Jarray, Cell cells, double area_constraint , double temperature,
-			int* nb_cellules_vivantes, int* nb_cellules_mortes, int* nb_cellules_condamnees, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int* commencer_division, int* nb_cellules_tuees)
+			int* nb_cellules_vivantes, int* nb_cellules_mortes, int* nb_cellules_condamnees, 
+			int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int* commencer_division, int* nb_cellules_tuees)
 {
 	bool sub_flag, nei_flag;
 	double sum_E=0;
 	int pixel, icandidate, ineighbour, y, x, pos_neg;
 	int state_copy[neighbour_copy];
+
+	// if (time==2000) {
+	// 	printf("AVANT:\n");
+	// 	for (int i=0;i<2000;i++){
+	// 		if (cells.condamnee[i]) printf("cellule %d, area %d\n", i, cells.area[i]);
+	// 	}
+	// 	printf("\n");
+	// }
 	
 	for(int i=0;i<ncol*nrow;i++) {
 		pixel=state[y=(int)(aleatoire(num)*nrow) +1][x=(int)(aleatoire(num)*ncol) +1]; //CASH PLANE are from 1 to ncol or nrow.
@@ -168,19 +177,20 @@ double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_ener
 								//update_flag = !(test_only_two(state,condwrap, 36, pixel, icandidate, ncol, nrow, x, y));
 							}
 						}	
-						//if (cells.condamnee[icandidate]==1) update_flag=false;  //cellule condamnee ne doit pas gagner de terrain
+						if (cells.condamnee[icandidate]==1) update_flag=false;  //cellule condamnee ne doit pas gagner de terrain
 						if (update_flag==true){
 							cells.area[pixel]--;
 							if (cells.area[0]==0 && !(*commencer_division))  (*commencer_division)=1;
 							if (cells.area[pixel]==0) {
 								//printf("PIXEL=%d, ICANDIDATE=%d\n",pixel,icandidate);
 								//if(cells.petite_cellule[pixel]==1) {printf("mort d'une petite cellule\n");} else {printf("mort d'une grande cellule\n");}
-								if (cells.condamnee[pixel]) {
-									(*nb_cellules_tuees)++;
-									(*nb_cellules_condamnees)--;
-								}
+								// if (cells.condamnee[pixel]) {
+								// 	(*nb_cellules_tuees)++;
+								// 	(*nb_cellules_condamnees)--;
+								// }
 								Empiler_cellule_vide(cells, pixel, nb_cellules_vivantes, 
-									nb_cellules_mortes, nb_cellules1, nb_cellules2, maxcells, pile_labels_libres, taille_labels_libres, 1);
+									nb_cellules_mortes, nb_cellules1, nb_cellules2, nb_cellules_tuees, nb_cellules_condamnees, 
+									nb_cellules1_condamnees, nb_cellules2_condamnees, maxcells, pile_labels_libres, taille_labels_libres, 1);
 							}
 							cells.area[icandidate]++;		
 							//if (cells.condamnee[icandidate]) printf("attention, une cellule condamnee gagne du terrain!!!\n");					
@@ -197,6 +207,13 @@ double BubbleHamiltonian(int time, int dispersetime, int num, int neighbour_ener
 			}
 		}
 	} 
+	// if (time==2000) {
+	// 	printf("APRES:\n");
+	// 	for (int i=0;i<2000;i++){
+	// 		if (cells.condamnee[i]) printf("cellule %d, area %d\n", i, cells.area[i]);
+	// 	}
+	// 	printf("\n");
+	// }	
 	return sum_E;
 }
 
@@ -670,6 +687,28 @@ void dessiner_tableau(int taille, int tab[taille][taille], int x0, int y0, int n
 	printf("\n\n");    
 }
 
+void dessiner_tableau_deux_cellules(int taille, int tab[taille][taille], int x0, int y0, int num_cell, int num_new_cell) {
+    for(int i=0;i<taille;i++) {
+         for(int j=0;j<taille;j++)   {
+			//  if (i==x0 && j==y0){
+			// 	 printf("%sX ",KRED);
+			// 	 printf("%s", KNRM);
+			//  }else {
+				 if (tab[i][j]==num_cell) {
+					printf("%s%d ",KRED,1);	
+					printf("%s", KNRM);				
+				 }else if (tab[i][j]==num_new_cell){
+					printf("%s%d ",KGRN,1);	
+					printf("%s", KNRM);						 				 
+				 } else{ 
+					 printf("%d ",0);
+				 }
+			//} //
+         }
+         printf("\n");
+    }  
+	printf("\n\n");    
+}
 
 int tester_connexe(int taille_tab, int tab[taille_tab][taille_tab], int num_cell, int x_deb_tache, int y_deb_tache, int area_cell ) {
 	if (x_deb_tache<0 || y_deb_tache<0) {
@@ -765,7 +804,7 @@ int tester_cellule_connexe_boucle(Cell cells,TYPE** state, int num_cell, int cot
 
 	point p_num=trouver_point_dedans_boucle(taille_tab, tab, num_cell);
 	if (p_num.x<=0 || p_num.y<=0 ) {
-		printf("pas reussi à trouver des points dedans dans connexité cellule, p.x=%d, p.y=%d\n", p_num.x, p_num.y);
+		//printf("pas reussi à trouver des points dedans dans connexité cellule, p.x=%d, p.y=%d\n", p_num.x, p_num.y);
 		return 0;
 	}
 	int x_deb_tache_num=p_num.x;
@@ -773,14 +812,29 @@ int tester_cellule_connexe_boucle(Cell cells,TYPE** state, int num_cell, int cot
 	int area_cell_num=cells.area[num_cell];	
 	int connexe_num=tester_connexe_boucle(taille_tab, tab, num_cell, x_deb_tache_num, y_deb_tache_num, area_cell_num );
 	if (!connexe_num) {
-		printf("ALERTE: la cellule %d n'est pas connexe!!\n",num_cell);
-		dessiner_tableau(taille_tab, tab, x_deb_tache_num, y_deb_tache_num, num_cell );
+		//printf("ALERTE: la cellule %d n'est pas connexe!!\n",num_cell);
+		//dessiner_tableau(taille_tab, tab, x_deb_tache_num, y_deb_tache_num, num_cell );
+		;
 	}
 	return connexe_num;
 	
 }
 
-int tester_connexe_boucle(int taille_tab, int tab[taille_tab][taille_tab], int num_cell, int x_deb_tache, int y_deb_tache, int area_cell ) {
+void empiler_pour_connexite(int taille_pile_connexite, point pile_connexite[taille_pile_connexite], int* dans_pile_connexite, point pixel) {
+    (*dans_pile_connexite)++;
+    if ((*dans_pile_connexite>taille_pile_connexite-1)) printf("attention, pile connexite saturée!!\n");
+    pile_connexite[(*dans_pile_connexite)-1]=pixel;
+}
+
+point depiler_pour_connexite(int taille_pile_connexite, point pile_connexite[taille_pile_connexite], int* dans_pile_connexite) {
+    point res=pile_connexite[(*dans_pile_connexite)-1];
+    (*dans_pile_connexite)--;
+    if ((*dans_pile_connexite<0)) printf("attention, dans_pile_connexite négatif!!\n");
+    return res;
+}
+
+
+int tester_connexe_boucle(int taille_tab, int tab[taille_tab][taille_tab], int num_cell, int x_deb_tache, int y_deb_tache, int area_cell) {
 	if (x_deb_tache<0 || y_deb_tache<0) {
 		printf("x ou y du début de tache négatif!!\n");
 	}
@@ -802,52 +856,91 @@ int tester_connexe_boucle(int taille_tab, int tab[taille_tab][taille_tab], int n
 			inclus[i][j]=0;
 		} 
 	}
-    int etendu[taille_tab][taille_tab];
-	for(int i=0;i<taille_tab;i++) {
-		for(int j=0;j<taille_tab;j++) {
-			etendu[i][j]=0;
-		} 
-	}
-	bool continuer_etendre=true;
-	inclus[x_deb_tache][y_deb_tache]=1;
-	etendu[x_deb_tache][y_deb_tache]=0;
-	while(continuer_etendre){
-		continuer_etendre=false;
-		for(int i=1;i<taille_tab-1;i++) {
-			for(int j=1;j<taille_tab-1;j++) {
-				if (tab_copie[i][j]) {
-					if (inclus[i][j] && !etendu[i][j]) {	
-						int ip=i+1, jp=j;					
-						if(tab_copie[ip][jp] && !inclus[ip][jp]){
-							inclus[ip][jp]=1;
-							etendu[ip][jp]=0;
-							continuer_etendre=true;
-						}
-						ip=i-1; jp=j;					
-						if(tab_copie[ip][jp] && !inclus[ip][jp]){
-							inclus[ip][jp]=1;
-							etendu[ip][jp]=0;
-							continuer_etendre=true;
-						}
-						ip=i; jp=j+1;					
-						if(tab_copie[ip][jp] && !inclus[ip][jp]){
-							inclus[ip][jp]=1;
-							etendu[ip][jp]=0;
-							continuer_etendre=true;
-						}
-						ip=i; jp=j-1;					
-						if(tab_copie[ip][jp] && !inclus[ip][jp]){
-							inclus[ip][jp]=1;
-							etendu[ip][jp]=0;
-							continuer_etendre=true;
-						}																													
-					}
-					etendu[i][j]=1;
+    // int etendu[taille_tab][taille_tab];
+	// for(int i=0;i<taille_tab;i++) {
+	// 	for(int j=0;j<taille_tab;j++) {
+	// 		etendu[i][j]=0;
+	// 	} 
+	// }
 
-				}
-			} 
-		}					
+	int taille_pile_connexite=500;
+	int dans_pile_connexite=0;
+	point pile_connexite[taille_pile_connexite];
+	for(int i=0; i<taille_pile_connexite;i++) {pile_connexite[i].x=0; pile_connexite[i].y=0;}
+	point p_depart={x_deb_tache,y_deb_tache};
+	empiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite,p_depart);
+	inclus[x_deb_tache][y_deb_tache]=1;
+	while(dans_pile_connexite>0){
+		point p=depiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite);
+		int i=p.x, j=p.y;
+		int ip=i+1, jp=j;					
+		if(tab_copie[ip][jp] && !inclus[ip][jp]){
+			point pp={ip,jp};
+			empiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite,pp);
+			inclus[ip][jp]=1;
+		}
+		ip=i-1; jp=j;					
+		if(tab_copie[ip][jp] && !inclus[ip][jp]){
+			point pp={ip,jp};
+			empiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite,pp);
+			inclus[ip][jp]=1;
+		}
+		ip=i; jp=j+1;					
+		if(tab_copie[ip][jp] && !inclus[ip][jp]){
+			point pp={ip,jp};
+			empiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite,pp);
+			inclus[ip][jp]=1;
+		}
+		ip=i; jp=j-1;					
+		if(tab_copie[ip][jp] && !inclus[ip][jp]){
+			point pp={ip,jp};
+			empiler_pour_connexite(taille_pile_connexite, pile_connexite, &dans_pile_connexite,pp);
+			inclus[ip][jp]=1;
+		}	
 	}
+
+
+
+	// bool continuer_etendre=true;
+	// inclus[x_deb_tache][y_deb_tache]=1;
+	// etendu[x_deb_tache][y_deb_tache]=0;
+	// while(continuer_etendre){
+	// 	continuer_etendre=false;
+	// 	for(int i=1;i<taille_tab-1;i++) {
+	// 		for(int j=1;j<taille_tab-1;j++) {
+	// 			if (tab_copie[i][j]) {
+	// 				if (inclus[i][j] && !etendu[i][j]) {	
+	// 					int ip=i+1, jp=j;					
+	// 					if(tab_copie[ip][jp] && !inclus[ip][jp]){
+	// 						inclus[ip][jp]=1;
+	// 						etendu[ip][jp]=0;
+	// 						continuer_etendre=true;
+	// 					}
+	// 					ip=i-1; jp=j;					
+	// 					if(tab_copie[ip][jp] && !inclus[ip][jp]){
+	// 						inclus[ip][jp]=1;
+	// 						etendu[ip][jp]=0;
+	// 						continuer_etendre=true;
+	// 					}
+	// 					ip=i; jp=j+1;					
+	// 					if(tab_copie[ip][jp] && !inclus[ip][jp]){
+	// 						inclus[ip][jp]=1;
+	// 						etendu[ip][jp]=0;
+	// 						continuer_etendre=true;
+	// 					}
+	// 					ip=i; jp=j-1;					
+	// 					if(tab_copie[ip][jp] && !inclus[ip][jp]){
+	// 						inclus[ip][jp]=1;
+	// 						etendu[ip][jp]=0;
+	// 						continuer_etendre=true;
+	// 					}																													
+	// 				}
+	// 				etendu[i][j]=1;
+
+	// 			}
+	// 		} 
+	// 	}					
+	// }//fin while
 
 	int surface=surface_tache(taille_tab, inclus);
 	if (surface==area_cell) {
@@ -928,7 +1021,7 @@ point trouver_point_dedans_boucle(int taille, int tab[taille][taille], int num_c
 	return p;
 }
 
-int tester_division(int taille_tab, int tab[taille_tab][taille_tab],int D, int num_cell,double theta, int* nb_cellules, int area_cell) {
+int tester_division(int taille_tab, int tab[taille_tab][taille_tab],int D, int num_cell,double theta, int* nb_cellules, int area_cell, int impress) {
 	
 	int debut_tache_trouve_num=0, x_deb_tache_num=0, y_deb_tache_num=0, area_cell_num=0;
 	int debut_tache_trouve_num_new=0, x_deb_tache_num_new=0, y_deb_tache_num_new=0, area_cell_num_new=0;
@@ -981,14 +1074,19 @@ int tester_division(int taille_tab, int tab[taille_tab][taille_tab],int D, int n
 	// if (connexe_num || connexe_num_new) printf("#############\n");
 	// if (connexe_num) printf("CONNEXITE 1: OK\n") ;
 	// if (connexe_num_new) printf("CONNEXITE 2: OK\n\n") ;
-	//tester simplement connexe
+
+	if (impress && (!connexe_num || !connexe_num_new)){
+		printf("Une des deux cellules_filles non connexe, voici la cellule mère %d avec theta=%.2lf degrés\n", num_cell, (theta/M_PI)*180.0);
+		dessiner_tableau_deux_cellules(taille_tab, tab_copie, D, D, num_cell, num_new_cell);
+	}
 	
 	return (connexe_num && connexe_num_new);
 }
 
 void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-	int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, int maxcells, int duree_de_vie1, 
-	int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre, int* nb_divisions_acceptees, int* nb_divisions_refusees) {
+	int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1_par_division, int* nb_cellules2_par_division, int* nb_cellules1, int* nb_cellules2, 
+	int* nb_cellules_tuees, int* nb_cellules_condamnees, int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int maxcells, int duree_de_vie1, 
+	int duree_de_vie2, int interphase1, int interphase2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre, int* nb_divisions_acceptees, int* nb_divisions_refusees) {
 
 	if (cells.celltype[num_cell]==0) return;
 	if (cells.condamnee[num_cell]==1) return;
@@ -1022,16 +1120,22 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 			tab[i][j]=state[ip][jp];
 		}
 	}
-	int division_ok=tester_division(taille_tab, tab, D, num_cell,theta, nb_cellules, cells.area[num_cell]);
+	int division_ok=tester_division(taille_tab, tab, D, num_cell,theta, nb_cellules, cells.area[num_cell],0);
+	//on essaie d'autres angles
 	double thetap=theta;
 	if (!division_ok){ //on va faire bouger theta
+		//printf("Division refusée pour la cellule %d\n", num_cell);
 		for(int i=1;i<=4;i++) {
 			thetap=theta + i*M_PI/5;
-			division_ok=tester_division(taille_tab, tab, D, num_cell,thetap, nb_cellules, cells.area[num_cell]);
+			//printf("Nouvelle tentative: %d pour la cellule %d\n", i, num_cell);
+			division_ok=tester_division(taille_tab, tab, D, num_cell,thetap, nb_cellules, cells.area[num_cell],0);
 			if (division_ok) {
-				//printf("							j'arrive à diviser la cellule %d à la %dième tentative\n",num_cell,i);
+				//printf("J'arrive à diviser la cellule %d à la tentative %d\n\n",num_cell,i);
 				theta=thetap;
 				break;
+			}else{
+				//printf("Ca n'a pas marché pour la cellule %d à la tentative %d\n", num_cell, i);
+				;
 			}
 		}
 	}
@@ -1039,12 +1143,20 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 	if (!division_ok) {
 		//printf("					division refusee pour la cellule %d, area: %d\n",num_cell, cells.area[num_cell]);
 		(*nb_divisions_refusees)++;
+		cells.division_refusee[num_cell]=1;
 		//dessiner_tableau(taille_tab, tab, D, D, num_cell);
 		//printf("test de connexite: %d, cellule: %d, area: %d\n", tester_cellule_connexe_boucle(cells,state,num_cell,cote_carre,nrow,ncol), num_cell, cells.area[num_cell]);
+
+		// for(int i=0;i<=4;i++) {
+		// 	thetap=theta + i*M_PI/5;
+		// 	printf("Nouvelle tentative: %d pour la cellule %d\n", i, num_cell);
+		// 	division_ok=tester_division(taille_tab, tab, D, num_cell,thetap, nb_cellules, cells.area[num_cell],1);
+		// }
 		return;
 	}else{
 		//printf("division acceptée pour la cellule %d, area: %d\n",num_cell, cells.area[num_cell]);
 		(*nb_divisions_acceptees)++;
+		cells.division_refusee[num_cell]=0;
 		//dessiner_tableau(taille_tab, tab, D, D, num_cell);
 		//printf("test de connexite: %d, cellule: %d, area: %d\n", tester_cellule_connexe_boucle(cells,state,num_cell,cote_carre,nrow,ncol), num_cell, cells.area[num_cell]);		
 		;
@@ -1064,9 +1176,11 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 	(*nb_cellules_par_division)++;
 	if (cells.celltype[num_cell] == 1) {
 		(*nb_cellules1)++;
+		(*nb_cellules1_par_division)++;
 	}
 	else if (cells.celltype[num_cell] == 2) {
 		(*nb_cellules2)++;
+		(*nb_cellules2_par_division)++;
 	}
 
 	cells.targetarea[num_new_cell] = cells.targetarea[num_cell];
@@ -1078,8 +1192,11 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 	//cells.t_debut_division[num_cell]=ttime;
 	cells.t_derniere_division[num_new_cell] = ttime;
 	cells.t_derniere_division[num_cell] = ttime;
-	cells.interphase[num_new_cell] = cells.interphase[num_cell];
+	if (cells.celltype[num_new_cell]==1)   cells.interphase[num_new_cell] =  (-100 + (int)(aleatoire(0)*200)) + interphase1;   //+ cells.interphase[num_cell];
+	if (cells.celltype[num_new_cell]==2)   cells.interphase[num_new_cell] =  (-100 + (int)(aleatoire(0)*200)) + interphase2;   //+ cells.interphase[num_cell];
+	//if (cells.interphase[num_new_cell] < 100) cells.interphase[num_new_cell]=100;
 	cells.condamnee[num_new_cell]=0;
+	cells.division_refusee[num_new_cell]=0;
 	if (cells.celltype[num_new_cell]==1) {
 		cells.duree_de_vie[num_new_cell] = duree_de_vie1; //(int) (aleatoire(0)*2*duree_de_vie1) + 1;
 	}else if (cells.celltype[num_new_cell]==2) {
@@ -1116,18 +1233,19 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 	cells.vient_de_naitre[num_new_cell]=1;
 	if (cells.area[num_new_cell]==0) {
 		Empiler_cellule_vide(cells, num_new_cell, nb_cellules_vivantes, 
-			nb_cellules_mortes, nb_cellules1, nb_cellules2, maxcells, pile_labels_libres, taille_labels_libres, 0);
+			nb_cellules_mortes, nb_cellules1, nb_cellules2, nb_cellules_tuees, nb_cellules_condamnees, nb_cellules1_condamnees,nb_cellules2_condamnees, maxcells, pile_labels_libres, taille_labels_libres, 0);
 	}
 	if (cells.area[num_cell]==0) {
 		Empiler_cellule_vide(cells, num_cell, nb_cellules_vivantes, 
-			nb_cellules_mortes, nb_cellules1, nb_cellules2, maxcells, pile_labels_libres, taille_labels_libres, 0);
+			nb_cellules_mortes, nb_cellules1, nb_cellules2, nb_cellules_tuees, nb_cellules_condamnees, nb_cellules1_condamnees,nb_cellules2_condamnees, maxcells, pile_labels_libres, taille_labels_libres, 0);
 	}
 	//printf("j'ai fait une division, cellule= %d, new_cellule= %d, nb_cellules=%d\n", num_cell, num_new_cell, *nb_cellules);
 }
 
 
 void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-	int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, int maxcells, int duree_de_vie1, 
+	int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, 
+	int* nb_cellules_tuees, int* nb_cellules_condamnees, int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int maxcells, int duree_de_vie1, 
 	int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre, int neighbour_copy) {
 
 	if (cells.celltype[num_cell]==0) return;
@@ -1219,7 +1337,7 @@ void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, T
 	}
 
 	if (!germe_new_cell_trouve) {
-		//printf("pas réussi à trouver un germe pour la nouvelle cellule dans division_un_pixel de la cellule %d. Donc pas de division\n", num_cell);
+		printf("pas réussi à trouver un germe pour la nouvelle cellule dans division_un_pixel de la cellule %d. Donc pas de division\n", num_cell);
 		return;
 	}else{
 		//printf("ai trouvé un germe dans division de cellule %d, new_cell=%d, x=%d, y=%d, \n", num_cell, num_new_cell, x_germe, y_germe);		
@@ -1250,11 +1368,13 @@ void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, T
 	cells.vient_de_naitre[num_new_cell]=1;
 	if (cells.area[num_new_cell]==0) {
 		Empiler_cellule_vide(cells, num_new_cell, nb_cellules_vivantes, 
-			nb_cellules_mortes, nb_cellules1, nb_cellules2, maxcells, pile_labels_libres, taille_labels_libres, 0);
+			nb_cellules_mortes, nb_cellules1, nb_cellules2, 
+			nb_cellules_tuees, nb_cellules_condamnees, nb_cellules1_condamnees, nb_cellules2_condamnees, maxcells, pile_labels_libres, taille_labels_libres, 0);
 	}
 	if (cells.area[num_cell]==0) {
 		Empiler_cellule_vide(cells, num_cell, nb_cellules_vivantes, 
-			nb_cellules_mortes, nb_cellules1, nb_cellules2, maxcells, pile_labels_libres, taille_labels_libres, 0);
+			nb_cellules_mortes, nb_cellules1, nb_cellules2, 
+			nb_cellules_tuees, nb_cellules_condamnees, nb_cellules1_condamnees, nb_cellules2_condamnees, maxcells, pile_labels_libres, taille_labels_libres, 0);
 	}
 	//printf("cellule= %d, area=%d, new_cell=%d, area_new_cell=%d\n",num_cell, cells.area[num_cell], num_new_cell, cells.area[num_new_cell]);
 	//printf("\n");
@@ -1393,12 +1513,32 @@ void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, T
 // 	//printf("j'ai fait une division, cellule= %d, new_cellule= %d, nb_cellules=%d\n", num_cell, num_new_cell, *nb_cellules);
 // }
 
-void Condamner_cellule(Cell cells, int num_cell, int *nb_cellules_condamnees, int* nb_cellules_vivantes) {
+int surface_par_type_cellule(Cell cells, int type_cellule, int nb_cellules) {
+	int res=0;
+	for (int i=0; i<nb_cellules;i++) {
+		if (cells.celltype[i]==type_cellule) {
+			res+=cells.area[i];
+		}
+	}
+	return res;
+}
+
+
+
+void Condamner_cellule(Cell cells, int num_cell, int *nb_cellules_condamnees, 
+					int *nb_cellules1_condamnees, int *nb_cellules2_condamnees, int* nb_cellules_vivantes) {
 	//printf("je condamne la cellule: %d, de type: %d, de surface: %d\n", num_cell, cells.celltype[num_cell], cells.area[num_cell]);
 	if (cells.celltype[num_cell]==0 || num_cell==0) return;
+	if (cells.condamnee[num_cell]==1) return;
 	cells.condamnee[num_cell]=1;
 	cells.targetarea[num_cell]=0; //utile??
 	(*nb_cellules_condamnees)++;
+
+	if (cells.celltype[num_cell]==1){
+		(*nb_cellules1_condamnees)++;
+	} else if (cells.celltype[num_cell]==2) {
+		(*nb_cellules2_condamnees)++;
+	}
 	if ((*nb_cellules_condamnees)==(*nb_cellules_vivantes)) {
 		printf("ALERTE: nb_cellules_condammees=nb_cellules_vivantes soit %d\n", (*nb_cellules_condamnees));
 	}
@@ -1470,7 +1610,8 @@ void Tuer_cellule(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE*
 
 
 void Empiler_cellule_vide(Cell cells, int num_cell, int* nb_cellules_vivantes, 
-	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int origine) {
+	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, 
+	int* nb_cellules_tuees, int* nb_cellules_condamnees, int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int origine) {
 		
 		//printf("j'empile la cellule: %d, area: %d, type: %d, origine: %d\n",num_cell, cells.area[num_cell], cells.celltype[num_cell], origine);	
 		// printf("nb_cellules_vivantes: %d, nb_cellules1: %d, nb_cellules2 %d\n", (*nb_cellules_vivantes), (*nb_cellules1), (*nb_cellules2) );
@@ -1491,6 +1632,18 @@ void Empiler_cellule_vide(Cell cells, int num_cell, int* nb_cellules_vivantes,
 		else if (cells.celltype[num_cell] == 2) {
 			(*nb_cellules2)--;
 		}
+
+		if (cells.condamnee[num_cell]) {
+			(*nb_cellules_tuees)++;
+			(*nb_cellules_condamnees)--;
+			if (cells.celltype[num_cell]==1) {
+				(*nb_cellules1_condamnees)--;
+			} else if (cells.celltype[num_cell]==2) {
+				(*nb_cellules2_condamnees)--;
+			} 
+		}
+
+
 		cells.celltype[num_cell]=0;
 		cells.condamnee[num_cell]=0;
 		cells.vient_de_mourir[num_cell]=1;		

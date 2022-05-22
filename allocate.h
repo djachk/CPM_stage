@@ -32,6 +32,7 @@ typedef struct cell {
 	int *morte;
 	int *vient_de_mourir;
 	int *condamnee;
+	int *division_refusee;
 } Cell;
 
 int* AllocateLineInterface(int n);
@@ -47,6 +48,6 @@ void InitBubblePlane(int init_config, float fillfactor,int nrow,int ncol, int ta
 
 int AssignNormalTargetarea(int mean, double mu2adim, int minimum);
 int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
-	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2);
+	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int* nb_cellules_cible, int* nb_cellules1_cible, int* nb_cellules2_cible);
 
 #endif

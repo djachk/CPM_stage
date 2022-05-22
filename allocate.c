@@ -100,7 +100,11 @@ Cell AllocateCells(int n, int maxneighbour) {
 	if((cells.condamnee=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
 		exit(EXIT_FAILURE);
-	}						
+	}	
+	if((cells.division_refusee=(int *)calloc((size_t)n,sizeof(int)))==NULL) {
+		fprintf(stderr,"error in memory allocation\n");
+		exit(EXIT_FAILURE);
+	}							
 	for(i=0;i<n;i++){
 		if((cells.neighbours[i]=(int *)calloc((size_t)maxneighbour,sizeof(int)))==NULL) {
 		fprintf(stderr,"error in memory allocation\n");
@@ -353,7 +357,7 @@ int AssignNormalTargetarea(int mean, double mu2adim, int minimum) {
 }
 
 int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
-	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2) { 
+	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int* nb_cellules_cible, int* nb_cellules1_cible, int* nb_cellules2_cible) { 
 	int ksigma, meantargetarea, totaltargetarea=0, delet=0;
 	double randnum;
 	meantargetarea=target_area;
@@ -432,6 +436,9 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 				}
 			}//bon
 		}//bon
+		(*nb_cellules_cible)=(*nb_cellules);
+		(*nb_cellules1_cible)=(*nb_cellules1);		
+		(*nb_cellules2_cible)=(*nb_cellules2);		
 		break;
 	//tridisperse:
 	case 3:
