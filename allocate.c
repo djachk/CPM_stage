@@ -356,11 +356,11 @@ int AssignNormalTargetarea(int mean, double mu2adim, int minimum) {
        return area;
 }
 
-int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int target_area, double targetareamu2, int target_area2, double alpha, Cell cells, double area_constraint2, 
+int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fillfactor, int nrow, int ncol, int* target_area, double targetareamu2, int* target_area2, double alpha, Cell cells, double area_constraint2, 
 	int interphase2, int duree_de_vie2, int* nb_cellules, int* nb_cellules1, int* nb_cellules2, int* nb_cellules_cible, int* nb_cellules1_cible, int* nb_cellules2_cible) { 
 	int ksigma, meantargetarea, totaltargetarea=0, delet=0;
 	double randnum;
-	meantargetarea=target_area;
+	meantargetarea=(*target_area);
 	switch (polydispersity) {
 	//monodisperse:
 	case 1:
@@ -379,8 +379,8 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 	case 2:
 		//target_area=(int)(meantargetarea*(1.+targetareamu2));
 		//target_area2=(int)(meantargetarea*(1.-targetareamu2));
-		target_area=(int)(meantargetarea*(1.+targetareamu2*sqrt(alpha/(1-alpha)))); //grosses bulles
-		target_area2=(int)(meantargetarea*(1.-targetareamu2*sqrt((1-alpha)/alpha))); //petites bulles
+		(*target_area)=(int)(meantargetarea*(1.+targetareamu2*sqrt(alpha/(1-alpha)))); //grosses bulles
+		(*target_area2)=(int)(meantargetarea*(1.-targetareamu2*sqrt((1-alpha)/alpha))); //petites bulles
 		for(ksigma=1;ksigma<maxcells;ksigma++){
 			if(cells.area[ksigma]>0){
 				switch (blob) {
@@ -388,9 +388,9 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 				case 1:
 					//if(D_PeriodicWrap(cells.xcoord[ksigma],ncol)<(1-alpha)*ncol-sqrt(meantargetarea/3.14))
 					if(D_PeriodicWrap(cells.ycoord[ksigma],nrow)<(1-alpha)*nrow -sqrt(meantargetarea/3.14))
-						cells.targetarea[ksigma]=target_area;
+						cells.targetarea[ksigma]=(*target_area);
 					else {
-						cells.targetarea[ksigma]=target_area2;
+						cells.targetarea[ksigma]=(*target_area2);
 						cells.targetarea_original[ksigma]=cells.targetarea[ksigma];
 						cells.celltype[ksigma]=2;
 						cells.area_constraint[ksigma]=area_constraint2;
@@ -404,27 +404,27 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 				//blob central de forme carrée:
 				case 2:
 					if(D_PeriodicWrap(cells.xcoord[ksigma],ncol)>ncol/2*(1-sqrt(1-alpha))+sqrt(meantargetarea/3.14) && D_PeriodicWrap(cells.xcoord[ksigma],ncol)<ncol/2*(1+sqrt(1-alpha))-sqrt(meantargetarea/3.14) && D_PeriodicWrap(cells.ycoord[ksigma],nrow)>nrow/2*(1-sqrt(1-alpha))+sqrt(meantargetarea/3.14) && D_PeriodicWrap(cells.ycoord[ksigma],nrow)<nrow/2*(1+sqrt(1-alpha))-sqrt(meantargetarea/3.14))
-						cells.targetarea[ksigma]=target_area;
+						cells.targetarea[ksigma]=(*target_area);
 					else {
-						cells.targetarea[ksigma]=target_area2;
+						cells.targetarea[ksigma]=(*target_area2);
 						cells.celltype[ksigma]=2;
 					}
 					break;
 				//blob central de forme circulaire:
 				case 3:
 					if(sqrt(pow(D_PeriodicWrap(cells.xcoord[ksigma],ncol)-ncol/2,2)+pow(D_PeriodicWrap(cells.ycoord[ksigma],nrow)-nrow/2,2))<sqrt((1-alpha)*ncol*nrow/3.14)-sqrt(meantargetarea/3.14))
-						cells.targetarea[ksigma]=target_area;
+						cells.targetarea[ksigma]=(*target_area);
 					else {
-						cells.targetarea[ksigma]=target_area2;
+						cells.targetarea[ksigma]=(*target_area2);
 						cells.celltype[ksigma]=2;
 					}
 					break;
 				//répartition aléatoire des petites et grosses bulles:
 				default:
 					if(aleatoire(0)<(1-alpha))
-						cells.targetarea[ksigma]=target_area;
+						cells.targetarea[ksigma]=(*target_area);
 					else {
-						cells.targetarea[ksigma]=target_area2;
+						cells.targetarea[ksigma]=(*target_area2);
 						cells.celltype[ksigma]=2;
 					}
 				
@@ -442,17 +442,17 @@ int GeneratePolydispersity(int polydispersity, int blob, int maxcells, double fi
 		break;
 	//tridisperse:
 	case 3:
-		target_area=(int)(meantargetarea*(1.+targetareamu2));
-		target_area2=(int)(meantargetarea*(1.-targetareamu2));
+		(*target_area)=(int)(meantargetarea*(1.+targetareamu2));
+		(*target_area2)=(int)(meantargetarea*(1.-targetareamu2));
 		for(ksigma=1;ksigma<maxcells;ksigma++){
 			if(cells.area[ksigma]>0){
 				randnum=aleatoire(0);
 				if(randnum<1./3.)
-					cells.targetarea[ksigma] = target_area;
+					cells.targetarea[ksigma] = (*target_area);
 				else if(randnum<2./3.)
 					cells.targetarea[ksigma] = meantargetarea;
 				else
-					cells.targetarea[ksigma] = target_area2;
+					cells.targetarea[ksigma] = (*target_area2);
 				totaltargetarea+=cells.targetarea[ksigma];
 				if(totaltargetarea-meantargetarea>fillfactor*nrow*ncol){
 					cells.targetarea[ksigma]=0;

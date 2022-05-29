@@ -1146,7 +1146,7 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
 		cells.division_refusee[num_cell]=1;
 		//dessiner_tableau(taille_tab, tab, D, D, num_cell);
 		//printf("test de connexite: %d, cellule: %d, area: %d\n", tester_cellule_connexe_boucle(cells,state,num_cell,cote_carre,nrow,ncol), num_cell, cells.area[num_cell]);
-
+		//on rejoue la scène...
 		// for(int i=0;i<=4;i++) {
 		// 	thetap=theta + i*M_PI/5;
 		// 	printf("Nouvelle tentative: %d pour la cellule %d\n", i, num_cell);
@@ -1516,7 +1516,7 @@ void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, T
 int surface_par_type_cellule(Cell cells, int type_cellule, int nb_cellules) {
 	int res=0;
 	for (int i=0; i<nb_cellules;i++) {
-		if (cells.celltype[i]==type_cellule) {
+		if (cells.celltype[i]==type_cellule && cells.condamnee[i]==0) {
 			res+=cells.area[i];
 		}
 	}
