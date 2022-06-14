@@ -28,7 +28,7 @@ bool connected_4(TYPE **state, int nb_nei_id, bool condwrap, int pixel, int ncol
 
 bool connected_8(TYPE **state, int nb_nei_id, bool condwrap, int pixel, int ncol, int nrow, int x, int y);
 
-void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface);
+void ComputeLineInterface(int ttime, FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface);
 
 void dessiner_tableau(int taille, int tab[taille][taille], int x0, int y0, int num_cell);
 point trouver_point_dedans_boucle(int taille, int tab[taille][taille], int num_cell);
@@ -62,5 +62,5 @@ void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, 
 double ComputeEnergy(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, int neighbour_energy, int** Jarray, double area_constraint);
 void ComputeCenterCoords(Cell cells, int ncol, int nrow, TYPE **state, int nbrcells, int mediumcell);
 int ComputeBoundary(Cell cells, int ncol, int nrow, TYPE **state, int neighbour_energy);
-void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subdirname, char *subdirnameRAW, TYPE **state, TYPE **nstate);
+void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subdirname, char *subdirnameRAW, TYPE **state, TYPE **nstate, int montrer_division);
 #endif

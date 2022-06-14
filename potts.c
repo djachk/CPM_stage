@@ -66,13 +66,15 @@ int main(int argc, char *argv[])
 	printf("seed=%lu\n",seed);
 	
 	
-	if (argc!=3) {
-		fprintf(stderr,"usage: %s parameterfile output\n",argv[0]);
+	if (argc!=4) {
+		fprintf(stderr,"usage: %s parameterfile output realisation\n",argv[0]);
 		return 1;
 	}
+	int realisation = atoi(argv[3]);
 
 	//reading the parameters from a file
 	ReadOptions(argv[1]);
+	//InDat("%d","realisation",&realisation);	
 	InDat("%lu","seed",&seed);
 	InDat("%d","dispersetime",&dispersetime);
 	InDat("%d","movie",&movie);
@@ -125,11 +127,12 @@ int main(int argc, char *argv[])
 	int division_cellulaire=0, commencer_division=0;
 	int interphase1=100, interphase2=100, intervalle_debut=500;
 	int apoptose=0;
-	double seuil1_apop=0.1, seuil2_apop=0.1;
+	double seuil_division=0.0, seuil1_apop=0.1, seuil2_apop=0.1;
 	int duree_de_vie1=100, duree_de_vie2=100;
 	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0, nb_cellules_par_division=0, nb_cellules1_par_division=0, nb_cellules2_par_division=0,nb_cellules_mortes=0;
 	int nb_cellules_cible=0, nb_cellules1_cible=0, nb_cellules2_cible=0;
 	int nb_divisions_acceptees=0, nb_divisions_refusees=0;
+	int montrer_division=0;
 	int nb_cellules_condamnees=0, nb_cellules_tuees=0, cote_carre=4;
 	int nb_cellules1_condamnees=0, nb_cellules2_condamnees=0;
 	double temperature[nb_temperature], energie[nb_temperature];
@@ -146,12 +149,14 @@ int main(int argc, char *argv[])
 	InDat("%d","interface_start_time",&interface_start_time); 
 	InDat("%d","interface_time_step",&interface_time_step);
 	InDat("%d","division_cellulaire",&division_cellulaire);
+	InDat("%d","montrer_division",&montrer_division);
 	InDat("%d","interphase1",&interphase1);
 	InDat("%d","interphase2",&interphase2);
 	InDat("%d","intervalle_debut",&intervalle_debut);
 	InDat("%d","apoptose",&apoptose);
 	InDat("%d","duree_de_vie1",&duree_de_vie1);
 	InDat("%d","duree_de_vie2",&duree_de_vie2);
+	InDat("%lf","seuil_division",&seuil_division);
 	InDat("%lf","seuil1_apop",&seuil1_apop);
 	InDat("%lf","seuil2_apop",&seuil2_apop);
 	
@@ -328,9 +333,9 @@ int main(int argc, char *argv[])
 	if (movie && neighbour_connected != 6) {
 		OpenDisplay(output,nrow,ncol);//open an output window
 		for (int i=0;i<nb_temperature;i++) {
-			snprintf(subdirectory[i],200,"%s/T=%g",argv[2], temperature[i]);
+			snprintf(subdirectory[i],200,"%s/seuil_T=%g",argv[2], temperature[i]);
 			OpenCellPNG(subdirectory[i],nrow,ncol);//if we want to save a movie, make a directory
-			snprintf(subdirectoryRAW[i],200,"%s/RAW-T=%g",argv[2], temperature[i]);
+			snprintf(subdirectoryRAW[i],200,"%s/RAW_seuil-T=%g",argv[2], temperature[i]);
 			OpenCellPNG(subdirectoryRAW[i],nrow,ncol);//if we want to save a movie, make a directory
 			//OpenRAW(subdirectoryRAW[i],nrow,ncol);//if we want to save a movie, make a directory
 		}
@@ -347,7 +352,7 @@ int main(int argc, char *argv[])
 		cells[i] = AllocateCells(maxcells, MAXNEIGHBOURS);
 //		energie[i] = 0;
 	}
-	line_interface = AllocateLineInterface(ncol); //interface horizontale entre les deux tissus cellulaires
+	line_interface = AllocateLineInterface(ncol+1); //interface horizontale entre les deux tissus cellulaires, temps + interface
 	printf("j'ai alloué line_interface\n");
 
 	for (int i=0;i<nb_temperature-1;i++) {
@@ -388,8 +393,11 @@ int main(int argc, char *argv[])
 		}
 	}
 	//fichier pour ecrire les interfaces
-	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_T=%d_J12=%d_B1=%d_B2=%d.txt",(int)temperature_max, Jarray[1][2], (int)area_constraint1, (int)area_constraint2); //un fichier pour chaque temperature
-	interfacefp=fopen(nom_fich_interface,"a");
+	//sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_div_apop_T=%d_J12=%d_B1=%d_B2=%d.txt",(int)temperature_max, Jarray[1][2], (int)area_constraint1, (int)area_constraint2); //un fichier pour chaque temperature
+	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_div_apop_T=%d_real=%d.txt",(int)temperature_max, realisation); //un fichier pour chaque temperature
+
+
+	interfacefp=fopen(nom_fich_interface,"w");
 	//InitBubblePlane(1,(int)(fillfactor*(double)(nrow*ncol)/ (double)target_area),nrow,ncol, target_area, state[0], cells[0]);
 	cells[0].area[0]=ncol*nrow;  // cellule medium cell occupe toy l'espace au départ
 	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
@@ -696,12 +704,14 @@ int main(int argc, char *argv[])
 			}
 			
 		}
-		if (movie && ttime>t_debut_movie && neighbour_connected != 6 && (ttime>=dispersetime)&&(!(ttime%movieinterval))){
+		if ((movie && ttime>t_debut_movie && neighbour_connected != 6 && (ttime>=dispersetime)&&(!(ttime%movieinterval))) ||
+		  (movie && ttime>t_debut_movie && neighbour_connected != 6 && (ttime>=dispersetime) && ttime>(totaltime-200) && (!(ttime%20)))){
 			//Affichage carré.
 			for (int ind=0;ind<nb_temperature;ind++) {
 				//side_interface=0;
 				//FindNeighbours(maxcells, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface);
-				AffichageCouleurs(affichage, cells[ind], ncol, nrow, subdirectory[ind], subdirectoryRAW[ind], state[ind], nstate);
+				//printf("J'affiche\n");
+				AffichageCouleurs(affichage, cells[ind], ncol, nrow, subdirectory[ind], subdirectoryRAW[ind], state[ind], nstate, montrer_division);
 				//AffichageCouleurs(affichage, nb_temperature, maxcells, cells[ind], ncol, nrow, *subdirectory[ind], state[ind], nstate);
 			}
 		} else if (movie && neighbour_connected == 6 && (ttime>dispersetime)&&(!(ttime%movieinterval))){
@@ -814,7 +824,7 @@ int main(int argc, char *argv[])
 nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d, area_moy1: %.2f, area_moy2: %.2f\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, nb_cellules1_par_division, nb_cellules2_par_division, nb_divisions_acceptees, nb_divisions_refusees, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules1_condamnees, nb_cellules2_condamnees, nb_cellules_tuees, area_moy1, area_moy2);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
-			ComputeLineInterface(interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
+			ComputeLineInterface(ttime, interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
 			nb_interfaces_ecrites++;
 			printf("j'ai ecrit %d interfaces\n", nb_interfaces_ecrites);
 		}
@@ -833,17 +843,18 @@ nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d,
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
 			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
-				if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell]) {
+				//if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell]) {
+				if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell] ) {	
+					// int tdebut = cells[0].t_debut_division[num_cell];
+					// int tderniere = cells[0].t_derniere_division[num_cell];
+					// int dinterphase = cells[0].interphase[num_cell];
 					
-					int tdebut = cells[0].t_debut_division[num_cell];
-					int tderniere = cells[0].t_derniere_division[num_cell];
-					int dinterphase = cells[0].interphase[num_cell];
-					
-					if(ttime==tderniere + (int) dinterphase/10) {
-						cells[0].targetarea[num_cell]=cells[0].targetarea_original[num_cell];
-					}
+					// if(ttime==tderniere + (int) dinterphase/10) {
+					// 	cells[0].targetarea[num_cell]=cells[0].targetarea_original[num_cell];
+					// }
 
-					if ((ttime>tderniere && !((ttime-tderniere)%dinterphase)) || cells[0].division_refusee[num_cell]) {
+					//if ((ttime>tderniere && !((ttime-tderniere)%dinterphase)) || cells[0].division_refusee[num_cell]) {
+					if ((aleatoire(0) < seuil_division && cells[0].area[num_cell] > (3.0/4.0)*cells[0].targetarea[num_cell]) || cells[0].division_refusee[num_cell]) {	
 					//if (ttime> tderniere + dinterphase) {	
 						// printf("temps de diviser la cellule %d\n",num_cell);
 						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);

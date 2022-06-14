@@ -474,29 +474,30 @@ int ComputeBoundary(Cell cells, int ncol, int nrow, TYPE **state, int neighbour_
 	return interface;
 }
 
-void ComputeLineInterface(FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface) {
+void ComputeLineInterface(int ttime, FILE* interfacefp, Cell cells, int ncol, int nrow, TYPE **state, int* line_interface) {
 	//calcule et ecrit dans un fichier l'interface entre les deux tissus cellulaires
 	int k, k_bas;
+	line_interface[0]=ttime;
 	for(int j=1;j<=ncol;j++){
 		for(int i=1;i<=nrow;i++){
-			if (i>nrow/4 && i<(3*nrow)/4) {
+			if (i>nrow/10 && i<(9*nrow)/10) {
 				k = cells.celltype[state[i][j]];
 				k_bas = cells.celltype[state[i+1][j]];
 				if (k==1 && k_bas==2 ){
-					if (line_interface[j-1] != 0) printf("Attention interface double\n");
-					line_interface[j-1]=nrow-i;  //lecture y=f(x)
+					if (line_interface[j] != 0) printf("Attention interface double\n");
+					line_interface[j]=nrow-i;  //lecture y=f(x)
 					break;
 				}
 			}
 		}
 	}
 	//ecriture dans fichier output
-	for (int j=0; j<ncol; j++){
+	for (int j=0; j<ncol+1; j++){
 		fprintf(interfacefp, "%d ", line_interface[j]);
 	}
 	fprintf(interfacefp, "\n");
 	//remise à zéro
-	for (int j=0; j<ncol; j++){
+	for (int j=0; j<ncol+1; j++){
 		line_interface[j]=0;
 	}		
 }
@@ -698,7 +699,7 @@ void dessiner_tableau_deux_cellules(int taille, int tab[taille][taille], int x0,
 					printf("%s%d ",KRED,1);	
 					printf("%s", KNRM);				
 				 }else if (tab[i][j]==num_new_cell){
-					printf("%s%d ",KGRN,1);	
+					printf("%s%d ",KGRN,2);	
 					printf("%s", KNRM);						 				 
 				 } else{ 
 					 printf("%d ",0);
@@ -1710,7 +1711,7 @@ void FindNeighbours(int maxcells, Cell cells, int ncol, int nrow, TYPE **state, 
 }
 
 
-void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subdirname, char *subdirnameRAW ,TYPE **state, TYPE **nstate) {
+void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subdirname, char *subdirnameRAW ,TYPE **state, TYPE **nstate, int montrer_division) {
 	//couleurs 
 	//affichage=0 for white monochrome, 1 for color with number of neighbours, 2 for color with celltypes, 3 for five different colors (large with 6, 7 neighbours, small with 5, 6 neighbours + default).
 		 // Default : try (but easiliy fail!) to make a different color for each bubble.
@@ -1736,15 +1737,17 @@ void AffichageCouleurs(int affichage, Cell cells, int ncol, int nrow, char *subd
 			else 
 				nstate[i][j]=1;
 			
-			if (cells.vient_de_diviser_pour_affichage[state[i][j]]==1) {
-				//printf("cette cellule s'est divisée\n");
-				nstate[i][j]=10;
-				//cells.vient_de_diviser[state[i][j]] = 0;
-			} 
+			if (montrer_division){
+				if (cells.vient_de_diviser_pour_affichage[state[i][j]]==1) {
+					//printf("cette cellule s'est divisée\n");
+					nstate[i][j]=10;
+					//cells.vient_de_diviser[state[i][j]] = 0;
+				} 
+			}
 		);
 		PLANE(
 			if (nstate[i][j]==10) cells.vient_de_diviser_pour_affichage[state[i][j]] = 0;
-		)
+		);
 	}
 	else if (affichage == 3) {
 		PLANE(
