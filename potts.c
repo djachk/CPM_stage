@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	//bool wait = false;
 	int sliding=0;
 	srand(time(0));
-	long unsigned int seed=rand();   //123456789;
+	long unsigned int seed= 123456789;   //rand();   //123456789;
 	printf("seed=%lu\n",seed);
 	
 	
@@ -394,7 +394,7 @@ int main(int argc, char *argv[])
 	}
 	//fichier pour ecrire les interfaces
 	//sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_div_apop_T=%d_J12=%d_B1=%d_B2=%d.txt",(int)temperature_max, Jarray[1][2], (int)area_constraint1, (int)area_constraint2); //un fichier pour chaque temperature
-	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_div_apop_T=%d_real=%d.txt",(int)temperature_max, realisation); //un fichier pour chaque temperature
+	sprintf(nom_fich_interface,"analyse_spectrale/ligneInterface_T=%.2f_real=%d.txt",temperature_max, realisation); //un fichier pour chaque temperature
 
 
 	interfacefp=fopen(nom_fich_interface,"w");
@@ -838,7 +838,7 @@ nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d,
 		// 	}
 		// }
 		//division
-		if(ttime>dispersetime && division_cellulaire && commencer_division){
+		if(ttime>dispersetime && division_cellulaire) {   // && commencer_division){
 			//printf("je vais tenter la division\n");
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
