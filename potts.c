@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	//bool wait = false;
 	int sliding=0;
 	srand(time(0));
-	long unsigned int seed= 123456789;   //rand();   //123456789;
+	long unsigned int seed= rand();   //rand();   //123456789;
 	printf("seed=%lu\n",seed);
 	
 	
@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
 	if (movie && neighbour_connected != 6) {
 		OpenDisplay(output,nrow,ncol);//open an output window
 		for (int i=0;i<nb_temperature;i++) {
-			snprintf(subdirectory[i],200,"%s/seuil_T=%g",argv[2], temperature[i]);
+			snprintf(subdirectory[i],200,"%s/seuil_T=%g_%d",argv[2], temperature[i], realisation);
 			OpenCellPNG(subdirectory[i],nrow,ncol);//if we want to save a movie, make a directory
 			snprintf(subdirectoryRAW[i],200,"%s/RAW_seuil-T=%g",argv[2], temperature[i]);
 			OpenCellPNG(subdirectoryRAW[i],nrow,ncol);//if we want to save a movie, make a directory
