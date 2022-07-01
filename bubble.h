@@ -43,14 +43,6 @@ void Diviser(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** sta
     int* nb_cellules_tuees, int* nb_cellules_condamnees, int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int maxcells, int duree_de_vie1, 
     int duree_de_vie2, int interphase1, int interphase2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre, int* nb_divisions_acceptees, int* nb_divisions_refusees);
 
-void Diviser_un_pixel(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-    int* nb_cellules_mortes, int* nb_cellules_par_division, int* nb_cellules1, int* nb_cellules2, 
-    int* nb_cellules_tuees, int* nb_cellules_condamnees, int* nb_cellules1_condamnees, int* nb_cellules2_condamnees, int maxcells, int duree_de_vie1, 
-    int duree_de_vie2, int* pile_labels_libres, int* taille_labels_libres, int cote_carre, int neighbour_copy);
-
-void Tuer_cellule(Cell cells, int num_cell, int ttime, int nrow, int ncol, TYPE** state, int* nb_cellules, int* nb_cellules_vivantes, 
-	int* nb_cellules_mortes, int* nb_cellules1, int* nb_cellules2, int* nb_cellules_condamnees, int maxcells, int* pile_labels_libres, int* taille_labels_libres, int cote_carre);
-
 void Condamner_cellule(Cell cells, int num_cell, int* nb_cellules_condamnees, int *nb_cellules1_condamnees, int *nb_cellules2_condamnees, int* nb_cellules_vivantes);
 
 void Empiler_cellule_vide(Cell cells, int num_cell, int* nb_cellules_vivantes, 

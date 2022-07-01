@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	double cpu_time_used;
 	double nmoyen_corrected;
 	int k, totaltime=10000, deleted, target_area2, ksigma, nbrsides, nbrbulles, nbrlarge, nbrsmall, affichage, load, side_interface12, side_interface10, side_interface20;
-	int interface_start_time, interface_time_step; //debut du calcul de l'interface et intervalle de calcul
+	int interface_start_time, interface_time_step; //DC: debut du calcul de l'interface et intervalle de calcul
 	//double proba_swap_temp;
 	double pression, pressionvoisine, curvature, mfacurvature, largecurvature, smallcurvature, largetemperature, smalltemperature, largemuprime, smallmuprime, largenumberofsides, smallnumberofsides, actual_temperature;
 	char Jval[200], output[200], loadname[200];
@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
 	int blob=2; //si blob=1, frontière verticale entre petites et grosses bulles, si blob=2, blob central carré, si blob=3, blob central circulaire, et sinon les petites et grosses bulles sont distribuées aléatoirement
 	//bool wait = false;
 	int sliding=0;
-	srand(time(0));
-	long unsigned int seed= rand();   //rand();   //123456789;
+	srand(time(0));  // DC: pour générer une graine différente à chaque exécution
+	long unsigned int seed= rand();    //123456789;
 	printf("seed=%lu\n",seed);
 	
 	
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	InDat("%d", "temperinginterval",&temperinginterval);
 	InDat("%d","nb_temperature",&nb_temperature);
 	InDat("%d","annealing",&annealing);
-	if (annealing) {
+	if (annealing) {	//annealing non utilisé
 		//actual_temperature = temperature[0];
 		//temperature[0] = annealing_temp;
 		nb_temperature = 1;
@@ -122,13 +122,13 @@ int main(int argc, char *argv[])
 	
 	TYPE **state[nb_temperature], **nstate, **copystate, **copynstate; //a 2D array. TYPE = int. For speeding up calculations, TYPE can be set in cash.h
 	Cell cells[nb_temperature], copycells;
-	int* line_interface; //interface entre les deux tissus cellulaires
+	int* line_interface; //DC: interface entre les deux tissus cellulaires
 	int nb_interfaces_ecrites=0;
 	int division_cellulaire=0, commencer_division=0;
-	int interphase1=100, interphase2=100, intervalle_debut=500;
+	int interphase1=100, interphase2=100, intervalle_debut=500;  //DC: finalement non utilisés..
 	int apoptose=0;
 	double seuil_division=0.0, seuil1_apop=0.1, seuil2_apop=0.1;
-	int duree_de_vie1=100, duree_de_vie2=100;
+	int duree_de_vie1=100, duree_de_vie2=100; // DC: non utilisé
 	int nb_cellules=0, nb_cellules_vivantes=0, nb_cellules1=0, nb_cellules2=0, nb_cellules_par_division=0, nb_cellules1_par_division=0, nb_cellules2_par_division=0,nb_cellules_mortes=0;
 	int nb_cellules_cible=0, nb_cellules1_cible=0, nb_cellules2_cible=0;
 	int nb_divisions_acceptees=0, nb_divisions_refusees=0;
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 		printf("maxcells=%d\n", maxcells);
 	}
 	
-	int pile_labels_libres[2*maxcells]; //conserver les labels libérés après apoptose
+	int pile_labels_libres[2*maxcells]; //DC: pour conserver les labels libérés après apoptose et économiser la mémoire
 	memset(pile_labels_libres, 0, 2*maxcells);
 	int taille_pile_labels_libres=0;
 
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
 	InitBubblePlane(init_config, fillfactor, nrow, ncol, target_area, rx, ry, state[0], cells[0],sliding, area_constraint1, 
 		interphase1, duree_de_vie1, &nb_cellules, &nb_cellules_vivantes, &nb_cellules1, &nb_cellules2, maxcells, division_cellulaire, apoptose, intervalle_debut, &commencer_division);
 
-	printf("j'ai fait InitBubble\n");
+	//printf("j'ai fait InitBubble\n");
 	printf("nb_cellules = %d\n", nb_cellules);
 
 	for (int i = 1;i<nb_temperature;i++) {
@@ -710,7 +710,6 @@ int main(int argc, char *argv[])
 			for (int ind=0;ind<nb_temperature;ind++) {
 				//side_interface=0;
 				//FindNeighbours(maxcells, cells[ind], ncol, nrow, state[ind], mediumcell, neighbour_connected, MAXNEIGHBOURS, &side_interface);
-				//printf("J'affiche\n");
 				AffichageCouleurs(affichage, cells[ind], ncol, nrow, subdirectory[ind], subdirectoryRAW[ind], state[ind], nstate, montrer_division);
 				//AffichageCouleurs(affichage, nb_temperature, maxcells, cells[ind], ncol, nrow, *subdirectory[ind], state[ind], nstate);
 			}
@@ -815,19 +814,20 @@ int main(int argc, char *argv[])
 			 &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_condamnees,  &nb_cellules1_condamnees, &nb_cellules2_condamnees, &nb_cellules1, &nb_cellules2, maxcells, pile_labels_libres, &taille_pile_labels_libres, &commencer_division, &nb_cellules_tuees);
 		}
 		if (!(ttime%100)) {
+			// DC: affichage de la progression tous les 100 pas 
 			double area1=(100.0*surface_par_type_cellule(cells[0],1,nb_cellules))/(ncol*nrow);
 			double area2=(100.0*surface_par_type_cellule(cells[0],2,nb_cellules))/(ncol*nrow);
 			printf("\ntemps %d\n", ttime);
-// 			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, nb_cellules1_par_division: %d, nb_cellules2_par_division: %d, nb_divisions_acceptees: %d, nb_divisions_refusees: %d, taille de la pile: %d, maxcells: %d, nb_cellules_condamnees: %d, \
-// nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d, surface_cellules1: %.2f%%, surface_cellules2: %.2f%%\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, nb_cellules1_par_division, nb_cellules2_par_division, nb_divisions_acceptees, nb_divisions_refusees, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules1_condamnees, nb_cellules2_condamnees, nb_cellules_tuees, area1, area2);
 			printf("nb_cellules: %d,nb_cellules1: %d,nb_cellules2: %d, nb_cellules_vivantes: %d, nb_cellules_mortes: %d, nb_cellules_par_division: %d, nb_cellules1_par_division: %d, nb_cellules2_par_division: %d, nb_divisions_acceptees: %d, nb_divisions_refusees: %d, taille de la pile: %d, maxcells: %d, nb_cellules_condamnees: %d, \
 nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d, area_moy1: %.2f, area_moy2: %.2f\n", nb_cellules,nb_cellules1, nb_cellules2, nb_cellules_vivantes, nb_cellules_mortes, nb_cellules_par_division, nb_cellules1_par_division, nb_cellules2_par_division, nb_divisions_acceptees, nb_divisions_refusees, taille_pile_labels_libres, maxcells, nb_cellules_condamnees, nb_cellules1_condamnees, nb_cellules2_condamnees, nb_cellules_tuees, area_moy1, area_moy2);
 		}
 		if((ttime>=interface_start_time)&&(!(ttime%interface_time_step))){
+			// DC: on calcule et on écrit l'interface
 			ComputeLineInterface(ttime, interfacefp, cells[0], ncol, nrow, state[0], line_interface);  //calcul de l'interface
 			nb_interfaces_ecrites++;
 			printf("j'ai ecrit %d interfaces\n", nb_interfaces_ecrites);
 		}
+		//DC: test global de la connxité si besoin:
 		//test général connexité
 		// if(ttime>dispersetime){
 		// 	ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
@@ -837,30 +837,17 @@ nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d,
 		// 		}
 		// 	}
 		// }
-		//division
-		if(ttime>dispersetime && division_cellulaire) {   // && commencer_division){
-			//printf("je vais tenter la division\n");
+		//division 
+		if(ttime>dispersetime && division_cellulaire) {   // DC: && commencer_division){, finalement on commence la division tout de suite...
 			ComputeCenterCoords(cells[0], ncol, nrow, state[0], nb_cellules+1, mediumcell);
 			int nb_cellules_courant=nb_cellules;
+			area_moy1=(1.0*surface_par_type_cellule(cells[0],1,nb_cellules))/(nb_cellules1-nb_cellules1_condamnees);
+			double seuil_proba1=(1.0*(target_area - area_moy1))/target_area;
+			area_moy2=(1.0*surface_par_type_cellule(cells[0],2,nb_cellules))/(nb_cellules2-nb_cellules2_condamnees);
+			double seuil_proba2=(1.0*(target_area2 - area_moy2))/target_area2;				
 			for(int num_cell=1; num_cell<=nb_cellules_courant; num_cell++){
-				//if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell]) {
 				if (cells[0].celltype[num_cell] != 0 && !cells[0].vient_de_naitre[num_cell] ) {	
-					// int tdebut = cells[0].t_debut_division[num_cell];
-					// int tderniere = cells[0].t_derniere_division[num_cell];
-					// int dinterphase = cells[0].interphase[num_cell];
-					
-					// if(ttime==tderniere + (int) dinterphase/10) {
-					// 	cells[0].targetarea[num_cell]=cells[0].targetarea_original[num_cell];
-					// }
-
-					//if ((ttime>tderniere && !((ttime-tderniere)%dinterphase)) || cells[0].division_refusee[num_cell]) {
 					if ((aleatoire(0) < seuil_division && cells[0].area[num_cell] > (3.0/4.0)*cells[0].targetarea[num_cell]) || cells[0].division_refusee[num_cell]) {	
-					//if (ttime> tderniere + dinterphase) {	
-						// printf("temps de diviser la cellule %d\n",num_cell);
-						// printf("nb_cellules=%d, maxcells=%d", nb_cellules, maxcells);
-						// Diviser_un_pixel(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_par_division, 
-						// 	&nb_cellules1, &nb_cellules2, 
-						//  &nb_cellules_tuees, &nb_cellules_condamnees, maxcells, duree_de_vie1, duree_de_vie2, pile_labels_libres, &taille_pile_labels_libres, cote_carre, neighbour_copy);			
 						Diviser(cells[0], num_cell, ttime, nrow, ncol, state[0], &nb_cellules, &nb_cellules_vivantes, &nb_cellules_mortes, &nb_cellules_par_division, 
 							&nb_cellules1_par_division, &nb_cellules2_par_division,&nb_cellules1, &nb_cellules2, 
 							&nb_cellules_tuees, &nb_cellules_condamnees, &nb_cellules1_condamnees, &nb_cellules2_condamnees, maxcells, duree_de_vie1, duree_de_vie2, 
@@ -875,43 +862,21 @@ nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d,
 		}
 		//apoptose
 		if(ttime>dispersetime && apoptose && commencer_division){
-			//int nb_cellules_courant=nb_cellules;	
-			// double seuil_proba1_initial= ((nb_cellules1-nb_cellules1_condamnees-nb_cellules1_cible)*1.0)/nb_cellules1_cible;
-			// double seuil_proba2_initial= ((nb_cellules2-nb_cellules2_condamnees-nb_cellules2_cible)*1.0)/nb_cellules2_cible;
-			// double marge_ratio1=0, marge_ratio2=0;					
-			// if (nb_cellules_vivantes-nb_cellules_condamnees>nb_cellules_cible)  {	
-			// 	double seuil_proba1= ((nb_cellules1-nb_cellules1_condamnees-nb_cellules1_cible)*1.0)/nb_cellules1_cible;
-			// 	double seuil_proba2= ((nb_cellules2-nb_cellules2_condamnees-nb_cellules2_cible)*1.0)/nb_cellules2_cible;
-			//double seuil1_apop=0.1, seuil2_apop=0.1;
 			area_moy1=(1.0*surface_par_type_cellule(cells[0],1,nb_cellules))/(nb_cellules1-nb_cellules1_condamnees);
 			double seuil_proba1=(1.0*(target_area - area_moy1))/target_area;
 			area_moy2=(1.0*surface_par_type_cellule(cells[0],2,nb_cellules))/(nb_cellules2-nb_cellules2_condamnees);
 			double seuil_proba2=(1.0*(target_area2 - area_moy2))/target_area2;			
-				for(int num_cell=1; num_cell<=nb_cellules; num_cell++){
-			// double facteur=0.001;
-			// double area_moy1=(1.0*surface_par_type_cellule(cells[0],1,nb_cellules1))/nb_cellules1;
-			// double seuil_proba1=(facteur*(target_area - area_moy1))/target_area;
-			// double area_moy2=(1.0*surface_par_type_cellule(cells[0],2,nb_cellules2))/nb_cellules2;
-			// double seuil_proba2=(facteur*(target_area2 - area_moy2))/target_area2;						
-					if (cells[0].celltype[num_cell] != 0) {				
-							// int tdebut = cells[0].t_debut_division[num_cell];
-							// int dvie = cells[0].duree_de_vie[num_cell];						
+				for(int num_cell=1; num_cell<=nb_cellules; num_cell++){						
+					if (cells[0].celltype[num_cell] != 0) {										
 							if (cells[0].celltype[num_cell]==1) {
-								//printf("seuil_proba1=%.4lf\n", seuil_proba1);
 								if (seuil_proba1>seuil1_apop && aleatoire(0)<seuil_proba1) {
-									//printf("je condamne une cellule 1, target_area=%d, area_moy1=%.2f, seuil_proba1=%.2f\n",target_area, area_moy1, seuil_proba1);
-								//if (aleatoire(0)<seuil_proba1 && seuil_proba1_initial>marge_ratio1) {
 									Condamner_cellule(cells[0], num_cell, &nb_cellules_condamnees, &nb_cellules1_condamnees, &nb_cellules2_condamnees, &nb_cellules_vivantes);
 								}
 							} else if (cells[0].celltype[num_cell]==2){
-								//printf("seuil_proba2=%.4lf\n", seuil_proba2);
 								if (seuil_proba2>seuil2_apop && aleatoire(0)<seuil_proba2) {
-									//printf("je condamne une cellule 2, target_area2=%d, area_moy2=%.2f, seuil_proba2=%.2f\n",target_area2, area_moy2, seuil_proba2);
-								//if (aleatoire(0)<seuil_proba2 && seuil_proba2_initial>marge_ratio2) {
 									Condamner_cellule(cells[0], num_cell, &nb_cellules_condamnees, &nb_cellules1_condamnees, &nb_cellules2_condamnees, &nb_cellules_vivantes);
 								}
 							}
-							// Tuer_cellule(cells[0],....
 					}
 				}
 			//}
@@ -924,7 +889,7 @@ nb_cellules1_condamnees: %d, nb_cellules2_condamnees: %d, nb_cellules_tuees: %d,
 	printf("fin du programme\n");
 	fclose(interfacefp); 
 
-	//On vérifie qu'il n'y a pas de fuite d'énergie:
+	//On vérifie qu'il n'y a pas de fuite d'énergie:   //DC: pas utilisé...
 	for (int d=0;d<nb_temperature;d++) {
 		double energie_recalculee = ComputeEnergy(maxcells, cells[d], ncol, nrow, state[d], neighbour_energy, Jarray, area_constraint);
 		//if (energie[d] != energie_recalculee){
